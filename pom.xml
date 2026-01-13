@@ -96,15 +96,14 @@
                 <version>2.14.1</version>
                 <configuration>
                     <resourceGroup>bms-dev-rg-001</resourceGroup>
-                    <appName>bms-dev-asp-001-w</appName>
+                    <appName>bms-app-dev-redis</appName>
                     <region>japanwest</region>
                     <subscriptionId>767b4a6a-f5bd-4f45-a562-e91f40d4d559</subscriptionId>
-                    <appServicePlanName>asp-bms-dev-asp-001-w</appServicePlanName>
+                    <appServicePlanName>bms-dev-asp-001-w</appServicePlanName>
                     <pricingTier>B1</pricingTier>
                     <runtime>
                         <os>linux</os>
                         <javaVersion>17</javaVersion>
-                        <webContainer>java</webContainer>
                     </runtime>
                     <deployment>
                         <resources>
