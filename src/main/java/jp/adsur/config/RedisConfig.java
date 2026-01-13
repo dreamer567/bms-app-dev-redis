@@ -1,69 +1,74 @@
 package jp.adsur.config;
 
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
-import redis.clients.jedis.Protocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.util.HashMap;
-import java.util.Map;
+import jp.adsur.RedisTokenProvider;
 
+@Configuration
 public class RedisConfig {
-    // 環境変数からAzureの完整なRedis接続文字列を取得
-    private static final String REDIS_CONNECTION_STRING = System.getenv("REDIS_CONNECTION_STRING")
-            // ローカルテスト用に完整な文字列で置き換え（実際のRedis名とAccess Keyに置き換え）
-            != null ? System.getenv("REDIS_CONNECTION_STRING")
-            : "bms-dev-cache-001.redis.cache.windows.net:6379,password=jI7B2eul6bHnuDatwwdFvqW088x5lwK9MAzCaDsb00c=,abortConnect=false";
+    private static final Logger log = LoggerFactory.getLogger(RedisConfig.class);
 
-    // 接続池設定
-    private static final JedisPoolConfig poolConfig = new JedisPoolConfig();
-    static {
-        poolConfig.setMaxTotal(10);
-        poolConfig.setMaxIdle(5);
-        poolConfig.setMinIdle(2);
-        poolConfig.setTestOnBorrow(true);
-    }
+    @Autowired
+    private RedisTokenProvider redisTokenProvider;
 
-    // Azure接続文字列を解析するメソッド（核心）
-    private static Map<String, String> parseAzureRedisConnStr(String connStr) {
-        Map<String, String> result = new HashMap<>();
+    // Redis连接工厂（核心）
+    @Bean
+    public LettuceConnectionFactory lettuceConnectionFactory() {
+        long startTime = System.currentTimeMillis();
         try {
-            // 1. 最初のカンマでhost:portとその他パラメータに分割
-            String[] mainParts = connStr.split(",", 2);
-            String hostPortPart = mainParts[0].trim();
-            String paramsPart = mainParts.length > 1 ? mainParts[1].trim() : "";
+            log.info("开始创建Redis Lettuce连接工厂...");
 
-            // 2. host:portを分割
-            String[] hostPort = hostPortPart.split(":");
-            result.put("host", hostPort[0]);
-            result.put("port", hostPort.length > 1 ? hostPort[1] : String.valueOf(Protocol.DEFAULT_PORT));
+            // 1. 获取Token（关键步骤）
+            String token = redisTokenProvider.getRedisAccessToken();
+            log.debug("Redis Token已获取，准备配置连接参数");
 
-            // 3. passwordなどのパラメータを解析
-            if (!paramsPart.isEmpty()) {
-                String[] params = paramsPart.split(",");
-                for (String param : params) {
-                    String[] kv = param.split("=", 2);
-                    if (kv.length == 2) {
-                        result.put(kv[0].trim(), kv[1].trim());
-                    }
-                }
-            }
+            // 2. 配置Redis连接（示例，替换为你的实际配置）
+            String redisHost = "your-redis-host.redis.cache.windows.net";
+            int redisPort = 6380;
+            log.info("Redis连接配置：host={}, port={}（SSL启用）", redisHost, redisPort);
+
+            RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(redisHost, redisPort);
+            config.setPassword(token); // 使用Token作为密码
+            config.setUsername("$redisCacheName"); // Azure Redis用户名
+
+            // 3. 创建连接工厂
+            LettuceConnectionFactory factory = new LettuceConnectionFactory(config);
+            factory.afterPropertiesSet(); // 初始化
+            long costTime = System.currentTimeMillis() - startTime;
+
+            log.info("Redis Lettuce连接工厂创建成功，耗时{}ms，工厂状态：{}",
+                    costTime, factory.isRunning() ? "运行中" : "未运行");
+            return factory;
         } catch (Exception e) {
-            throw new RuntimeException("Redis接続文字列の解析に失敗しました：" + connStr, e);
+            long costTime = System.currentTimeMillis() - startTime;
+            log.error("Redis Lettuce连接工厂创建失败，耗时{}ms", costTime, e);
+            throw new RuntimeException("创建Redis连接工厂失败", e);
         }
-        return result;
     }
 
-    // JedisPoolを作成（解析したパラメータを個別に渡す）
-    public static JedisPool getJedisPool() {
-        Map<String, String> connParams = parseAzureRedisConnStr(REDIS_CONNECTION_STRING);
+    // RedisTemplate配置
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(LettuceConnectionFactory lettuceConnectionFactory) {
+        log.info("开始配置RedisTemplate...");
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(lettuceConnectionFactory);
 
-        // パラメータ抽出
-        String host = connParams.get("host");
-        int port = Integer.parseInt(connParams.get("port"));
-        String password = connParams.get("password");
-        int timeout = Protocol.DEFAULT_TIMEOUT; // タイムアウト（必要に応じて調整）
+        // 设置序列化器
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new StringRedisSerializer());
 
-        // パラメータを個別に渡す（URI解析を回避）
-        return new JedisPool(poolConfig, host, port, timeout, password);
+        template.afterPropertiesSet();
+        log.info("RedisTemplate配置完成，序列化器：StringRedisSerializer");
+        return template;
     }
 }
