@@ -14,15 +14,21 @@ logging:
     max-history: 7
     encoding: UTF-8
 
-# Redis核心配置（适配Azure Redis + Entra认证）
 spring:
   redis:
-    host: bms-dev-cache-001.redis.cache.windows.net # 你的Redis实例域名（已正确）
-    port: 6380 # Azure Redis SSL端口（固定6380，已正确）
-    ssl: true # 强制开启SSL（Azure Redis必须，已正确）
-    timeout: 30000 # 超时时间30秒（建议添加，避免连接超时）
-    username: $bms-dev-cache-001 # 关键：Azure Redis认证用户名固定格式 $+实例名
-    password: ${REDIS_TOKEN} # 由代码动态注入Token，这里仅占位
+    host: bms-dev-cache-001.redis.cache.windows.net
+    port: 6380
+    username: $bms-dev-cache-001
+    ssl: true  # 这里启用SSL，完全替代代码里的ssl(true)
+    timeout: 60000
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+      shutdown-timeout: 10000
+      client:
+        timeout: 30000  # 连接超时
 
 # 托管标识配置（给代码用的核心参数）
 redis:
