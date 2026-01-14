@@ -11,30 +11,24 @@
     <name>redis-app</name>
     <description>Azure Redis with Managed Identity</description>
 
-    <!-- 编译环境配置 -->
     <properties>
-        <java.version>8</java.version>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- 仅保留核心Spring Boot版本 -->
         <spring-boot.version>2.7.0</spring-boot.version>
     </properties>
 
-    <!-- 添加阿里云+Spring官方仓库，确保依赖能拉取 -->
+    <!-- 阿里云镜像，确保依赖拉取成功 -->
     <repositories>
         <repository>
             <id>aliyunmaven</id>
             <url>https://maven.aliyun.com/repository/public</url>
         </repository>
-        <repository>
-            <id>spring-releases</id>
-            <url>https://repo.spring.io/release</url>
-        </repository>
     </repositories>
 
     <dependencies>
-        <!-- 仅保留核心依赖，去掉scheduling -->
+        <!-- Spring Boot核心依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -46,7 +40,7 @@
             <version>${spring-boot.version}</version>
         </dependency>
 
-        <!-- Azure依赖（必选） -->
+        <!-- Azure依赖（仅保留这2个，移除手动的msal4j） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
@@ -56,11 +50,6 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
             <version>1.30.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.azure</groupId>
-            <artifactId>msal4j</artifactId>
-            <version>1.10.0</version>
         </dependency>
     </dependencies>
 
