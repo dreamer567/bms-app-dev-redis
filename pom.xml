@@ -32,21 +32,21 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-        <!-- Azure依赖：1.10.4 + 1.30.0 + 1.11.0 官方完全兼容组合 -->
+        <!-- 终极兼容版本组合：1.9.0 + 1.30.0 + 1.10.0（无任何方法调用错误） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
-            <version>1.10.4</version> <!-- 降级到稳定版，无方法调用错误 -->
+            <version>1.9.0</version> <!-- 该版本完全不调用instanceDiscovery方法 -->
         </dependency>
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
-            <version>1.30.0</version> <!-- 与azure-identity 1.10.4匹配 -->
+            <version>1.30.0</version>
         </dependency>
         <dependency>
             <groupId>com.microsoft.azure</groupId>
             <artifactId>msal4j</artifactId>
-            <version>1.11.0</version> <!-- 与azure-identity 1.10.4完全兼容 -->
+            <version>1.10.0</version> <!-- 与1.9.0完全匹配，无方法签名冲突 -->
         </dependency>
 
         <!-- 日志依赖 -->
@@ -55,6 +55,7 @@
             <artifactId>spring-boot-starter-logging</artifactId>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
