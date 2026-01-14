@@ -22,6 +22,12 @@ spring:
           min-idle: 2          # 最小空闲连接数
           max-wait: 30000ms    # 最大等待时间
 
+# 托管标识配置（给代码用的核心参数）
+redis:
+  mi:
+    client-id: fcd3d5e6-21dd-492a-a4ff-e738c64d8e39 # 你的托管标识Client ID
+  scope: https://redis.azure.com/.default # Token请求的scope（代码里会用，可配在这里统一管理）
+
 # 应用基础配置
 server:
   port: 80
