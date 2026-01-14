@@ -3,63 +3,71 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- 核心：使用Spring Boot父依赖管理所有版本，避免版本冲突 -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.2.3</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
 
     <groupId>jp.adsur</groupId>
-    <artifactId>your-project-name</artifactId>
+    <artifactId>redis-app</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>your-project-name</name>
+    <name>RedisApp</name>
 
     <properties>
         <java.version>17</java.version>
-        <!-- 无需手动指定spring-data-redis版本，父依赖已管理 -->
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
     <dependencies>
-        <!-- 核心：Redis Starter（自动引入spring-data-redis + lettuce，版本匹配） -->
+        <!-- 核心依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-        <!-- Web Starter（必须，否则接口无法访问） -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <!-- Azure Identity（降级到1.5.0，避免虚拟线程问题） -->
+        <!-- Azure Identity（适配Spring Boot 3.2） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <version>1.5.0</version>
         </dependency>
 
-        <!-- 测试依赖（可选） -->
+        <!-- 可选：简化日志，避免无关错误刷屏 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+            <artifactId>spring-boot-starter-logging</artifactId>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- 核心：Spring Boot打包插件，确保依赖嵌入jar -->
+            <!-- 关键：完整的Spring Boot打包配置，确保所有类嵌入 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>3.2.3</version>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                    <!-- 强制包含所有依赖 -->
+                    <includeSystemScope>true</includeSystemScope>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
-                            <goal>repackage</goal> <!-- 关键：重新打包，包含所有依赖 -->
+                            <goal>repackage</goal>
+                            <goal>build-info</goal>
                         </goals>
                     </execution>
                 </executions>
