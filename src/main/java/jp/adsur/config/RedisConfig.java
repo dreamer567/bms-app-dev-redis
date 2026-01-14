@@ -24,13 +24,14 @@ import reactor.util.retry.Retry;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Redis配置类（修复版本兼容+Token超时降级）
+ * 容错版Redis配置：Token获取失败不崩溃，应用能启动，仅打日志
  */
 @Configuration
 public class RedisConfig {
@@ -49,96 +50,97 @@ public class RedisConfig {
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     public RedisConfig() {
-        // 初始化托管标识凭证（添加详细日志）
-        log.info("开始初始化ManagedIdentityCredential（系统分配）");
+        // 1. 打印Azure环境变量（关键：验证是否注入托管标识环境变量）
+        log.info("=== 打印Azure App Service环境变量 ===");
+        Map<String, String> env = System.getenv();
+        log.info("IDENTITY_ENDPOINT: {}", env.get("IDENTITY_ENDPOINT")); // 托管标识核心变量，启用后必有值
+        log.info("IDENTITY_HEADER: {}", env.get("IDENTITY_HEADER"));     // 托管标识核心变量，启用后必有值
+        log.info("WEBSITE_SITE_NAME: {}", env.get("WEBSITE_SITE_NAME"));
+        log.info("WEBSITE_INSTANCE_ID: {}", env.get("WEBSITE_INSTANCE_ID"));
+
+        // 2. 初始化托管标识凭证（失败仅打日志，不抛异常）
+        log.info("=== 开始初始化ManagedIdentityCredential ===");
+        ManagedIdentityCredential tempCredential = null;
         try {
-            this.credential = new ManagedIdentityCredentialBuilder().build();
-            log.info("ManagedIdentityCredential初始化成功");
+            tempCredential = new ManagedIdentityCredentialBuilder().build();
+            log.info("=== ManagedIdentityCredential初始化成功 ===");
         } catch (Exception e) {
-            log.error("ManagedIdentityCredential初始化失败", e);
-            throw new RuntimeException("托管标识凭证初始化失败", e);
+            log.error("=== ManagedIdentityCredential初始化失败 ===", e);
+            // 初始化失败也不抛异常，保证Bean能创建
         }
-        // 首次刷新Token（添加降级）
-        this.refreshToken();
-        // 定时刷新：每55分钟执行一次
-        scheduler.scheduleAtFixedRate(this::refreshTokenAndResetConnection, 0, 55, TimeUnit.MINUTES);
+        this.credential = tempCredential;
+
+        // 3. 延迟5秒刷新Token（核心：不在构造函数同步执行，避免启动时崩溃）
+        scheduler.schedule(this::refreshToken, 5, TimeUnit.SECONDS);
+        // 4. 定时刷新：每55分钟执行一次
+        scheduler.scheduleAtFixedRate(this::refreshTokenAndResetConnection, 5, 55, TimeUnit.MINUTES);
     }
 
     private void refreshTokenAndResetConnection() {
         try {
             refreshToken();
-            redisConnectionFactory().resetConnection();
-            log.info("Redis Token定时刷新完成，过期时间：{}",
-                    tokenExpireTime.get() != null ? TIME_FORMATTER.format(tokenExpireTime.get()) : "未知");
+            LettuceConnectionFactory factory = redisConnectionFactory();
+            if (factory != null) {
+                factory.resetConnection();
+                log.info("Redis Token定时刷新完成，过期时间：{}",
+                        tokenExpireTime.get() != null ? TIME_FORMATTER.format(tokenExpireTime.get()) : "未知");
+            }
         } catch (Exception e) {
             log.error("Redis Token定时刷新失败", e);
         }
     }
 
     /**
-     * 核心：获取/刷新Redis Token（延长超时+指数退避重试+详细日志）
+     * 核心修改：Token获取失败仅打日志，不抛任何异常
      */
     private void refreshToken() {
+        // 凭证未初始化，直接返回
+        if (credential == null) {
+            log.error("=== 托管标识凭证未初始化，跳过Token获取 ===");
+            return;
+        }
+
         TokenRequestContext requestContext = new TokenRequestContext();
         requestContext.addScopes(REDIS_SCOPE);
-        log.info("开始请求Redis Token，作用域：{}", REDIS_SCOPE);
+        log.info("=== 开始请求Redis Token，作用域：{} ===", REDIS_SCOPE);
 
-        AccessToken token = null;
         try {
-            // 获取Token：15秒超时 + 5次指数退避重试（解决网络波动）
-            token = credential.getToken(requestContext)
-                    .retryWhen(Retry.backoff(5, Duration.ofSeconds(1)) // 5次重试，初始间隔1秒，指数退避
-                            .jitter(0.5) // 随机抖动，避免并发重试冲突
-                            .filter(e -> e instanceof Exception) // 仅重试异常
-                            .onRetryExhaustedThrow((spec, sig) -> new TimeoutException("Token请求重试5次仍失败")))
-                    .timeout(Duration.ofSeconds(15)) // 延长超时到15秒
-                    .onErrorResume(e -> { // 降级：打印详细错误+返回空
-                        log.error("Token请求失败，触发降级，错误：{}", e.getMessage(), e);
-                        return Mono.empty();
+            Mono<AccessToken> tokenMono = credential.getToken(requestContext)
+                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(2)) // 减少重试次数，加快启动
+                            .jitter(0.5)
+                            .filter(e -> e instanceof Exception))
+                    .timeout(Duration.ofSeconds(10)) // 缩短超时时间
+                    .doOnNext(t -> {
+                        cachedToken.set(t.getToken());
+                        tokenExpireTime.set(t.getExpiresAt().toInstant());
+                        log.info("=== 成功获取Redis Token，长度：{}，过期时间：{} ===",
+                                t.getToken().length(), TIME_FORMATTER.format(t.getExpiresAt()));
                     })
-                    .block();
+                    .onErrorResume(e -> {
+                        log.error("=== Token请求失败（非致命错误，应用继续运行）===", e);
+                        return Mono.empty();
+                    });
 
-            // 空安全检查+明确提示
-            if (token == null || token.getToken() == null || token.getToken().isEmpty()) {
-                log.error("获取的Redis Token为空！请检查Azure配置：\n" +
-                        "1. App Service → 标识 → 系统分配 → 状态=开启\n" +
-                        "2. Redis实例 → 访问控制(IAM) → 给App Service标识授予Redis Cache Contributor权限\n" +
-                        "3. App Service网络能访问https://login.microsoftonline.com");
-                throw new RuntimeException("获取的Redis Token为空，Azure托管标识配置错误");
-            }
-
-            // 适配azure-core 1.28.0：expiresAt() 无get前缀
-            cachedToken.set(token.getToken());
-            tokenExpireTime.set(token.getExpiresAt().toInstant());
-
-            // 日志打印（脱敏Token）
-            log.info("成功获取Redis Token，过期时间：{}，Token长度：{}",
-                    TIME_FORMATTER.format(token.getExpiresAt()), token.getToken().length());
+            // 非阻塞获取，失败不抛异常
+            tokenMono.subscribe();
 
         } catch (Exception e) {
-            log.error("获取Redis Token失败，根因：{}", e.getMessage(), e);
-            throw new RuntimeException("获取Redis Token失败，请优先检查Azure配置：\n" +
-                    "1. App Service系统分配标识是否启用\n" +
-                    "2. Redis实例IAM是否给标识分配Redis权限\n" +
-                    "3. App Service网络能否访问Azure AD（login.microsoftonline.com）", e);
+            log.error("=== 获取Redis Token异常（非致命错误，应用继续运行）===", e);
+            // 绝对不抛RuntimeException！！！保证应用能启动
         }
     }
 
     private String getValidToken() {
-        Instant now = Instant.now();
+        // Token为空时返回空字符串，不抛异常
         if (cachedToken.get() == null || tokenExpireTime.get() == null
-                || tokenExpireTime.get().minusSeconds(300).isBefore(now)) {
+                || tokenExpireTime.get().minusSeconds(300).isBefore(Instant.now())) {
             refreshToken();
         }
-        return cachedToken.get();
+        return cachedToken.get() == null ? "" : cachedToken.get();
     }
 
-    /**
-     * 修复SSL配置（适配Lettuce 6.x）
-     */
     private LettuceClientConfiguration getLettuceConfig() {
         ClientResources clientResources = DefaultClientResources.create();
-        // 默认SSL配置（Azure Redis兼容）
         SslOptions sslOptions = SslOptions.create();
 
         ClientOptions clientOptions = ClientOptions.builder()
@@ -149,7 +151,7 @@ public class RedisConfig {
         return LettuceClientConfiguration.builder()
                 .clientResources(clientResources)
                 .clientOptions(clientOptions)
-                .useSsl() // 启用SSL（Azure Redis强制要求）
+                .useSsl()
 //                .timeout(Duration.ofSeconds(10))
                 .build();
     }
@@ -157,7 +159,12 @@ public class RedisConfig {
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost, redisPort);
-        redisConfig.setPassword(getValidToken());
+        String token = getValidToken();
+        if (!token.isEmpty()) {
+            redisConfig.setPassword(token);
+        } else {
+            log.warn("=== Token为空，Redis连接工厂使用空密码（仅调试）===");
+        }
 
         LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig, getLettuceConfig());
         factory.setValidateConnection(true);
@@ -181,13 +188,6 @@ public class RedisConfig {
             }
         } catch (InterruptedException e) {
             scheduler.shutdownNow();
-        }
-    }
-
-    // 自定义超时异常
-    static class TimeoutException extends RuntimeException {
-        public TimeoutException(String message) {
-            super(message);
         }
     }
 }
