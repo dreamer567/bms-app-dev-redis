@@ -2,10 +2,10 @@
 logging:
   level:
     root: INFO
-    jp.adsur: DEBUG
-    com.azure: DEBUG
-    org.springframework.data.redis: DEBUG
-    io.lettuce.core: DEBUG
+    jp.adsur: INFO
+    com.azure: INFO
+    org.springframework.data.redis: INFO
+    io.lettuce.core: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
   file:
