@@ -94,39 +94,40 @@ public class RedisConfig {
      * 核心修改：Token获取失败仅打日志，不抛任何异常
      */
     private void refreshToken() {
-        // 凭证未初始化，直接返回
         if (credential == null) {
-            log.error("=== 托管标识凭证未初始化，跳过Token获取 ===");
+            log.error("=== 托管标识凭证未初始化 ===");
             return;
         }
 
         TokenRequestContext requestContext = new TokenRequestContext();
         requestContext.addScopes(REDIS_SCOPE);
-        log.info("=== 开始请求Redis Token，作用域：{} ===", REDIS_SCOPE);
+        log.info("=== 开始请求Redis Token ===");
+        log.info("请求作用域：{}", REDIS_SCOPE);
+        log.info("App Service标识对象ID：{}", System.getenv("IDENTITY_HEADER"));
 
         try {
             Mono<AccessToken> tokenMono = credential.getToken(requestContext)
-                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(2)) // 减少重试次数，加快启动
+                    .retryWhen(Retry.backoff(3, Duration.ofSeconds(2))
                             .jitter(0.5)
                             .filter(e -> e instanceof Exception))
-                    .timeout(Duration.ofSeconds(10)) // 缩短超时时间
+                    .timeout(Duration.ofSeconds(15))
+                    // 新增：打印每一步的错误详情
+                    .doOnError(e -> log.error("=== Token请求错误详情 ===", e))
                     .doOnNext(t -> {
                         cachedToken.set(t.getToken());
                         tokenExpireTime.set(t.getExpiresAt().toInstant());
-                        log.info("=== 成功获取Redis Token，长度：{}，过期时间：{} ===",
-                                t.getToken().length(), TIME_FORMATTER.format(t.getExpiresAt()));
+                        log.info("=== Token获取成功 ===");
+                        log.info("Token长度：{}", t.getToken().length());
+                        log.info("过期时间：{}", TIME_FORMATTER.format(t.getExpiresAt()));
                     })
                     .onErrorResume(e -> {
-                        log.error("=== Token请求失败（非致命错误，应用继续运行）===", e);
+                        log.error("=== Token请求降级，错误原因：{} ===", e.getMessage(), e);
                         return Mono.empty();
                     });
 
-            // 非阻塞获取，失败不抛异常
             tokenMono.subscribe();
-
         } catch (Exception e) {
-            log.error("=== 获取Redis Token异常（非致命错误，应用继续运行）===", e);
-            // 绝对不抛RuntimeException！！！保证应用能启动
+            log.error("=== Token请求异常，完整堆栈：{} ===", e.getMessage(), e);
         }
     }
 
