@@ -32,24 +32,22 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-        <!-- Azure Identity + 适配的azure-core（解决HttpTrait缺失） -->
+        <!-- Azure依赖：1.12.2 + 1.34.0 + 1.13.3 官方兼容组合 -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <version>1.12.2</version>
         </dependency>
-        <!-- 关键：显式引入1.34.0版本azure-core（包含HttpTrait接口） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
             <version>1.34.0</version>
         </dependency>
-
-        <!-- MSAL4J依赖（解决IClientCredential缺失） -->
+        <!-- 关键修改：msal4j改为1.13.3 -->
         <dependency>
             <groupId>com.microsoft.azure</groupId>
             <artifactId>msal4j</artifactId>
-            <version>1.14.3</version>
+            <version>1.13.3</version>
         </dependency>
 
         <!-- 日志依赖 -->
@@ -58,7 +56,6 @@
             <artifactId>spring-boot-starter-logging</artifactId>
         </dependency>
     </dependencies>
-
     <build>
         <plugins>
             <plugin>
