@@ -21,56 +21,38 @@
         <maven.compiler.target>17</maven.compiler.target>
     </properties>
 
-    <!-- 强制锁定依赖版本，杜绝冲突 -->
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-core</artifactId>
-                <version>1.11.0</version>
-            </dependency>
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-identity</artifactId>
-                <version>1.5.0</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
-        <!-- Spring Web（适配2.7.x） -->
+        <!-- Spring核心依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-
-        <!-- Spring Data Redis（适配2.7.x） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
-        <!-- Azure Identity 1.5.0（排除所有子依赖，避免冲突） -->
+        <!-- Azure Identity + 适配的azure-core（解决HttpTrait缺失） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
-            <version>1.5.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
+            <version>1.12.2</version>
         </dependency>
-
-        <!-- 手动引入1.11.0版本azure-core（1.5.0适配版本） -->
+        <!-- 关键：显式引入1.34.0版本azure-core（包含HttpTrait接口） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
-            <version>1.11.0</version>
+            <version>1.34.0</version>
         </dependency>
 
-        <!-- 日志依赖（解决关闭时的类缺失） -->
+        <!-- MSAL4J依赖（解决IClientCredential缺失） -->
+        <dependency>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>msal4j</artifactId>
+            <version>1.14.3</version>
+        </dependency>
+
+        <!-- 日志依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-logging</artifactId>
