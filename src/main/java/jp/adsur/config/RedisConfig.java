@@ -31,7 +31,7 @@ public class RedisConfig {
             log.debug("Redis Token已获取，准备配置连接参数");
 
             // 2. 配置Redis连接（示例，替换为你的实际配置）
-            String redisHost = "your-redis-host.redis.cache.windows.net";
+            String redisHost = "bms-dev-cache-001.redis.cache.windows.net";
             int redisPort = 6380;
             log.info("Redis连接配置：host={}, port={}（SSL启用）", redisHost, redisPort);
 
