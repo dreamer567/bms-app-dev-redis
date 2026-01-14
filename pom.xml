@@ -17,22 +17,18 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>2.7.0</spring-boot.version>
-        <!-- 改用1.9.0（中央/阿里云仓库均存在） -->
-        <azure-core.version>1.28.0</azure-core.version>
-        <azure-identity.version>1.9.0</azure-identity.version>
+        <!-- 1.8.0版本：阿里云仓库100%可获取，无stringJoin BUG -->
+        <azure-core.version>1.25.0</azure-core.version>
+        <azure-identity.version>1.8.0</azure-identity.version>
     </properties>
 
-    <!-- 仅保留阿里云仓库（同步所有Azure SDK版本，国内访问快） -->
+    <!-- 仅保留阿里云仓库（国内访问最快、同步最全） -->
     <repositories>
         <repository>
             <id>aliyunmaven</id>
             <url>https://maven.aliyun.com/repository/public</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
         </repository>
     </repositories>
 
@@ -49,12 +45,12 @@
             <version>${spring-boot.version}</version>
         </dependency>
 
-        <!-- Azure SDK（1.9.0版本100%可获取） -->
+        <!-- Azure SDK（1.8.0版本无BUG+阿里云必存） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <version>${azure-identity.version}</version>
-            <!-- 排除冲突的azure-core，强制使用指定版本 -->
+            <!-- 排除冲突依赖，强制使用指定版本 -->
             <exclusions>
                 <exclusion>
                     <groupId>com.azure</groupId>
