@@ -134,30 +134,7 @@ public class RedisConfig {
         return cachedToken.get() == null ? "" : cachedToken.get();
     }
 
-    /**
-     * 核心修改：自定义DNS解析 + 优化Netty连接配置
-     */
-    private ClientResources getClientResources() {
-        return DefaultClientResources.builder()
-                // 自定义DNS解析（解决Netty DNS解析失败问题）
-                .dnsResolver(new DnsResolver() {
-                    @Override
-                    public InetAddress[] resolve(String host) throws UnknownHostException {
-                        log.info("=== 手动解析Redis域名：{} ===", host);
-                        InetAddress[] addresses = InetAddress.getAllByName(host);
-                        for (InetAddress addr : addresses) {
-                            log.info("=== 解析结果：{} ===", addr.getHostAddress());
-                        }
-                        return addresses;
-                    }
-                })
-                // 连接超时配置
-                .ioThreadPoolSize(8)
-                .computationThreadPoolSize(4)
-                .build();
-    }
-
-    private LettuceClientConfiguration getLettuceConfig() {
+     private LettuceClientConfiguration getLettuceConfig() {
         ClientResources clientResources = getClientResources();
         SslOptions sslOptions = SslOptions.create();
 
@@ -182,19 +159,10 @@ public class RedisConfig {
 
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
-        // 手动解析Redis域名（避免Netty自动解析失败）
-        String resolvedHost = redisHost;
-        try {
-            InetAddress[] addresses = InetAddress.getAllByName(redisHost);
-            if (addresses.length > 0) {
-                resolvedHost = addresses[0].getHostAddress();
-                log.info("=== Redis域名解析完成：{} → {} ===", redisHost, resolvedHost);
-            }
-        } catch (UnknownHostException e) {
-            log.error("=== Redis域名解析失败 ===", e);
-        }
+        // 关键修改：不要手动解析域名成IP，直接用原始域名连接
+        log.info("=== Redis连接配置：使用域名 {} 连接 ===", redisHost);
 
-        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(resolvedHost, redisPort);
+        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost, redisPort);
         String token = getValidToken();
         if (!token.isEmpty()) {
             redisConfig.setPassword(token);
@@ -207,6 +175,15 @@ public class RedisConfig {
         factory.setValidateConnection(true);
         factory.afterPropertiesSet();
         return factory;
+    }
+
+    // 同时删除自定义的DNSResolver（改用Azure Private DNS自动解析）
+    private ClientResources getClientResources() {
+        return DefaultClientResources.builder()
+                // 移除自定义DNSResolver，用系统默认（Azure Private DNS会自动解析域名到私有IP）
+                .ioThreadPoolSize(8)
+                .computationThreadPoolSize(4)
+                .build();
     }
 
     @Bean
