@@ -22,7 +22,7 @@ public class RedisConfig {
 
     // 核心修改：通过@Value读取配置/环境变量（优先级：环境变量 > application.yml > 默认值）
     // 1. Redis主机名：优先读环境变量SPRING_REDIS_HOST，再读application.yml的spring.redis.host，默认值兜底
-    @Value("${spring.redis.host:bms-dev-cache-001.privatelink.redis.cache.windows.net}")
+    @Value("${spring.redis.host:bms-dev-cache-001.redis.cache.windows.net}")
     private String redisHost;
 
     // 2. Redis端口：同理，可通过配置/环境变量调整
