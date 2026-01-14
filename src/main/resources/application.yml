@@ -3,40 +3,40 @@ spring:
   # Redis核心配置（适配Azure Redis）
   data:
     redis:
-      # 替换为你的Azure Redis主机名（格式：xxx.redis.cache.windows.net）
+      # Azure Redis主机名
       host: bms-dev-cache-001.redis.cache.windows.net
-      # Azure Redis强制使用6380端口（SSL端口），非6379
+      # SSL端口
       port: 6380
-      # 必须启用SSL（Azure Redis强制要求）
+      # 强制SSL
       ssl: true
-      # 连接/命令超时时间（避免超时）
+      # 超时配置
       timeout: 30000ms
       connect-timeout: 30000ms
-      # 禁用默认密码（改用托管标识Token认证）
+      # 密码留空（Token认证）
       password: ""
-      # Lettuce连接池配置（提升稳定性，可选但推荐）
+      # 连接池配置
       lettuce:
         pool:
-          max-active: 8        # 最大活跃连接数
-          max-idle: 8          # 最大空闲连接数
-          min-idle: 2          # 最小空闲连接数
-          max-wait: 30000ms    # 最大等待时间
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: 30000ms
 
-# 托管标识配置（给代码用的核心参数）
+# 托管标识配置（必须与代码@Value的key完全一致）
 redis:
   mi:
-    client-id: fcd3d5e6-21dd-492a-a4ff-e738c64d8e39 # 你的托管标识Client ID
-  scope: https://redis.azure.com/.default # Token请求的scope（代码里会用，可配在这里统一管理）
+    client-id: fcd3d5e6-21dd-492a-a4ff-e738c64d8e39 # 2个空格缩进，不能少
+  scope: https://redis.azure.com/.default
 
-# 应用基础配置
+# 应用配置
 server:
   port: 80
-  shutdown: immediate        # 禁用优雅关闭，避免GracefulShutdownCallback错误
+  shutdown: immediate
 
-# 日志配置（解决logback类缺失）
+# 日志配置
 logging:
   level:
-    org.springframework.data.redis: DEBUG  # 可选：开启Redis调试日志，方便排查
-    com.azure.identity: INFO               # 托管标识日志级别
+    org.springframework.data.redis: DEBUG
+    com.azure.identity: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
