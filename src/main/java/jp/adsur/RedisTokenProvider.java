@@ -3,7 +3,9 @@ package jp.adsur;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.core.credential.TokenRequestContext;
+import org.springframework.stereotype.Component;
 
+@Component
 public class RedisTokenProvider {
     // 你的用户分配托管标识的Client ID（必ず置き換えてください）
     private static final String USER_ASSIGNED_MI_CLIENT_ID = "fcd3d5e6-21dd-492a-a4ff-e738c64d8e39";
