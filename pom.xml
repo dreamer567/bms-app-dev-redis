@@ -1,42 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.18</version> <!-- 降级Spring Boot，完美适配1.5.0 -->
-        <relativePath/>
-    </parent>
 
     <groupId>jp.adsur</groupId>
     <artifactId>redis-app</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <name>redis-app</name>
+    <description>Azure Redis with Managed Identity</description>
 
+    <!-- 编译环境配置 -->
     <properties>
-        <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <java.version>8</java.version>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- 仅保留核心Spring Boot版本 -->
+        <spring-boot.version>2.7.0</spring-boot.version>
     </properties>
 
+    <!-- 添加阿里云+Spring官方仓库，确保依赖能拉取 -->
+    <repositories>
+        <repository>
+            <id>aliyunmaven</id>
+            <url>https://maven.aliyun.com/repository/public</url>
+        </repository>
+        <repository>
+            <id>spring-releases</id>
+            <url>https://repo.spring.io/release</url>
+        </repository>
+    </repositories>
+
     <dependencies>
-        <!-- Spring核心依赖 -->
+        <!-- 仅保留核心依赖，去掉scheduling -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <version>${spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
+            <version>${spring-boot.version}</version>
         </dependency>
 
-        <!-- 终极兼容版本组合：1.9.0 + 1.30.0 + 1.10.0（无任何方法调用错误） -->
+        <!-- Azure依赖（必选） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
-            <version>1.9.0</version> <!-- 该版本完全不调用instanceDiscovery方法 -->
+            <version>1.9.0</version>
         </dependency>
         <dependency>
             <groupId>com.azure</groupId>
@@ -46,22 +60,17 @@
         <dependency>
             <groupId>com.microsoft.azure</groupId>
             <artifactId>msal4j</artifactId>
-            <version>1.10.0</version> <!-- 与1.9.0完全匹配，无方法签名冲突 -->
-        </dependency>
-
-        <!-- 日志依赖 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-logging</artifactId>
+            <version>1.10.0</version>
         </dependency>
     </dependencies>
 
+    <!-- Spring Boot打包插件 -->
     <build>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>2.7.18</version>
+                <version>${spring-boot.version}</version>
                 <executions>
                     <execution>
                         <goals>
