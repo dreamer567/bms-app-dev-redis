@@ -18,7 +18,7 @@ public class RedisConfig {
     private final RedisTokenProvider tokenProvider;
 
     // Redis私有网络配置（替换为你的实际信息）
-    private static final String REDIS_HOST = "bms-dev-cache-001.privatelink.redis.cache.windows.net";
+    private static final String REDIS_HOST = "bms-dev-cache-001.redis.cache.windows.net";
     private static final int REDIS_PORT = 6380;
     private static final String REDIS_USER = "$bms-dev-cache-001";
 
