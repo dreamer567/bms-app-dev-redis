@@ -28,6 +28,7 @@ public class RedisTestController {
 
             return "✅ Redis测试成功！key=" + key + ", value=" + result;
         } catch (Exception e) {
+            e.printStackTrace();
             return "❌ Redis测试失败：" + e.getMessage();
         }
     }
