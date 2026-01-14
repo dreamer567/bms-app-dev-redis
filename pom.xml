@@ -17,12 +17,14 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>2.7.0</spring-boot.version>
-        <!-- 1.8.0版本：阿里云仓库100%可获取，无stringJoin BUG -->
+        <!-- 1. 统一Netty版本（解决NoSuchMethodError） -->
+        <netty.version>4.1.94.Final</netty.version>
+        <!-- 2. Azure SDK版本（稳定无BUG） -->
         <azure-core.version>1.25.0</azure-core.version>
         <azure-identity.version>1.8.0</azure-identity.version>
     </properties>
 
-    <!-- 仅保留阿里云仓库（国内访问最快、同步最全） -->
+    <!-- 阿里云仓库（国内最快） -->
     <repositories>
         <repository>
             <id>aliyunmaven</id>
@@ -43,18 +45,28 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
             <version>${spring-boot.version}</version>
+            <!-- 排除默认Netty，强制使用统一版本 -->
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
-        <!-- Azure SDK（1.8.0版本无BUG+阿里云必存） -->
+        <!-- Azure SDK（排除冲突Netty） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <version>${azure-identity.version}</version>
-            <!-- 排除冲突依赖，强制使用指定版本 -->
             <exclusions>
                 <exclusion>
                     <groupId>com.azure</groupId>
                     <artifactId>azure-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -62,6 +74,19 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
             <version>${azure-core.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- 3. 强制引入统一版本的Netty（解决版本冲突） -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>${netty.version}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
