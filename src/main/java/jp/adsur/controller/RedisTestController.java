@@ -4,6 +4,9 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 public class RedisTestController {
     private final StringRedisTemplate stringRedisTemplate;
@@ -31,5 +34,16 @@ public class RedisTestController {
             e.printStackTrace();
             return "❌ Redis测试失败：" + e.getMessage();
         }
+    }
+
+    @GetMapping("/check-azure-env")
+    public Map<String, String> checkAzureEnv() {
+        Map<String, String> env = new HashMap<>();
+        // 托管标识的核心环境变量（App Service启用标识后自动注入）
+        env.put("IDENTITY_ENDPOINT", System.getenv("IDENTITY_ENDPOINT"));
+        env.put("IDENTITY_HEADER", System.getenv("IDENTITY_HEADER"));
+        env.put("WEBSITE_SITE_NAME", System.getenv("WEBSITE_SITE_NAME"));
+        env.put("WEBSITE_INSTANCE_ID", System.getenv("WEBSITE_INSTANCE_ID"));
+        return env;
     }
 }
