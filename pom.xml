@@ -12,28 +12,28 @@
     <description>Azure Redis with Managed Identity</description>
 
     <properties>
-        <!-- 核心修改：Java版本改为17 -->
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- Spring Boot 2.7.x完全支持Java 17 -->
         <spring-boot.version>2.7.0</spring-boot.version>
-        <!-- Azure依赖版本适配Java 17（1.9.0/1.28.0均兼容Java 17） -->
-        <azure-core.version>1.28.0</azure-core.version>
-        <azure-identity.version>1.9.0</azure-identity.version>
+        <!-- 改用中央仓库稳定版本 -->
+        <azure-core.version>1.30.0</azure-core.version>
+        <azure-identity.version>1.10.4</azure-identity.version>
     </properties>
 
-    <!-- 阿里云镜像，确保依赖拉取成功 -->
+    <!-- 仅保留阿里云仓库（同步全、访问快） -->
     <repositories>
         <repository>
             <id>aliyunmaven</id>
             <url>https://maven.aliyun.com/repository/public</url>
+            <releases><enabled>true</enabled></releases>
+            <snapshots><enabled>false</enabled></snapshots>
         </repository>
     </repositories>
 
     <dependencies>
-        <!-- Spring Boot核心依赖（适配Java 17） -->
+        <!-- Spring Boot核心依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -45,22 +45,27 @@
             <version>${spring-boot.version}</version>
         </dependency>
 
-        <!-- Azure依赖（兼容Java 17） -->
+        <!-- Azure SDK（中央仓库100%可用） -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <version>${azure-identity.version}</version>
+            <!-- 排除冲突的依赖 -->
+            <exclusions>
+                <exclusion>
+                    <groupId>com.azure</groupId>
+                    <artifactId>azure-core</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
             <version>${azure-core.version}</version>
-            <!-- 强制指定版本，解决依赖传递导致的版本不一致 -->
             <scope>compile</scope>
         </dependency>
     </dependencies>
 
-    <!-- Spring Boot打包插件（适配Java 17） -->
     <build>
         <plugins>
             <plugin>
@@ -74,17 +79,7 @@
                         </goals>
                     </execution>
                 </executions>
-                <!-- 适配Java 17的打包配置 -->
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
             </plugin>
-            <!-- 显式指定编译插件，确保Java 17编译正常 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -93,11 +88,6 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
-                    <!-- 解决Java 17的模块化警告 -->
-                    <compilerArgs>
-<!--                        <arg>&#45;&#45;enable-preview</arg>-->
-                        <arg>--add-modules=ALL-SYSTEM</arg>
-                    </compilerArgs>
                 </configuration>
             </plugin>
         </plugins>
