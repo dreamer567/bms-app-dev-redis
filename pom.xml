@@ -11,68 +11,28 @@
     <groupId>jp.adsur</groupId>
     <artifactId>bms-app-dev-redis</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>bms-app-dev-redis</name>
-    <description>Test Azure Redis Entra Auth with Managed ID</description>
 
     <properties>
         <java.version>17</java.version>
-        <!-- 1. 确认可用的Azure依赖版本（中央仓库100%存在） -->
-        <azure-sdk-bom.version>1.2.36</azure-sdk-bom.version>
-        <netty.version>4.1.108.Final</netty.version>
+        <azure-identity.version>1.15.0</azure-identity.version>
     </properties>
 
-    <!-- 2. 使用中央仓库确认可用的Azure BOM数字版本 -->
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.azure</groupId>
-                <artifactId>azure-sdk-bom</artifactId>
-                <version>${azure-sdk-bom.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <!-- 统一Netty版本，解决版本冲突 -->
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-bom</artifactId>
-                <version>${netty.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
     <dependencies>
-        <!-- Spring Boot Web -->
+        <!-- 核心依赖：Web + Redis（自动配置Lettuce） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-
-        <!-- Spring Data Redis（Lettuce） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>redis.clients</groupId>
-                    <artifactId>jedis</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
-        <!-- 3. Azure依赖（由BOM自动管理版本，无需手动指定） -->
+        <!-- Azure托管标识：仅这一个依赖 -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-core-http-netty</artifactId>
+            <version>${azure-identity.version}</version>
         </dependency>
 
         <!-- 测试依赖 -->
@@ -85,37 +45,10 @@
 
     <build>
         <plugins>
+            <!-- 仅打包插件，无部署插件（手动部署更简单） -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <groupId>com.microsoft.azure</groupId>
-                <artifactId>azure-webapp-maven-plugin</artifactId>
-                <version>2.14.1</version>
-                <configuration>
-                    <resourceGroup>bms-dev-rg-001</resourceGroup>
-                    <appName>bms-app-dev-redis</appName>
-                    <region>japanwest</region>
-                    <subscriptionId>767b4a6a-f5bd-4f45-a562-e91f40d4d559</subscriptionId>
-                    <appServicePlanName>bms-dev-asp-001-w</appServicePlanName>
-                    <pricingTier>B1</pricingTier>
-                    <runtime>
-                        <os>linux</os>
-                        <javaVersion>17</javaVersion>
-                    </runtime>
-                    <deployment>
-                        <resources>
-                            <resource>
-                                <directory>${project.basedir}/target</directory>
-                                <includes>
-                                    <include>*.jar</include>
-                                </includes>
-                            </resource>
-                        </resources>
-                    </deployment>
-                </configuration>
             </plugin>
         </plugins>
     </build>

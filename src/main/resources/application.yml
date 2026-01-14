@@ -1,0 +1,31 @@
+# 日志配置（保留你的原有配置，无需修改）
+logging:
+  level:
+    root: INFO
+    jp.adsur: DEBUG
+    com.azure: DEBUG
+    org.springframework.data.redis: DEBUG
+    io.lettuce.core: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/redis-app.log
+    max-size: 100MB
+    max-history: 7
+    encoding: UTF-8
+
+# Redis核心配置（适配Azure Redis + Entra认证）
+spring:
+  redis:
+    host: bms-dev-cache-001.redis.cache.windows.net # 你的Redis实例域名（已正确）
+    port: 6380 # Azure Redis SSL端口（固定6380，已正确）
+    ssl: true # 强制开启SSL（Azure Redis必须，已正确）
+    timeout: 30000 # 超时时间30秒（建议添加，避免连接超时）
+    username: $bms-dev-cache-001 # 关键：Azure Redis认证用户名固定格式 $+实例名
+    password: ${REDIS_TOKEN} # 由代码动态注入Token，这里仅占位
+
+# 托管标识配置（给代码用的核心参数）
+redis:
+  mi:
+    client-id: fcd3d5e6-21dd-492a-a4ff-e738c64d8e39 # 你的托管标识Client ID
+  scope: https://redis.azure.com/.default # Token请求的scope（代码里会用，可配在这里统一管理）

@@ -2,25 +2,32 @@ package jp.adsur;
 
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RedisTokenProvider {
-    // 你的用户分配托管标识的Client ID（必ず置き換えてください）
-    private static final String USER_ASSIGNED_MI_CLIENT_ID = "fcd3d5e6-21dd-492a-a4ff-e738c64d8e39";
+    @Value("${redis.mi.client-id}")
+    private String miClientId;
 
-    public String getRedisAccessToken() {
-        // 修正：指定用户分配标识的Client ID
-        DefaultAzureCredential credential = new DefaultAzureCredentialBuilder()
-                .managedIdentityClientId(USER_ASSIGNED_MI_CLIENT_ID) // 核心修正点
-                .build();
+    @Value("${redis.scope}") // 读取配置文件中的scope
+    private String redisScope;
 
-        TokenRequestContext requestContext = new TokenRequestContext();
-        // RedisのEntra Auth用スコープ（固定値）
-        requestContext.addScopes("https://redis.azure.com/.default");
-
-        // トークンを取得（blockは同期処理、非同期の場合はsubscribeを使用）
-        return credential.getToken(requestContext).block().getToken();
+    // 获取Redis Entra认证Token
+    public String getRedisToken() {
+        try {
+            DefaultAzureCredential credential = new DefaultAzureCredentialBuilder()
+                    .managedIdentityClientId(miClientId)
+                    .build();
+            // 使用配置文件中的scope
+            TokenRequestContext context = new TokenRequestContext().addScopes(redisScope);
+            AccessToken token = credential.getToken(context).block();
+            return token != null ? token.getToken() : null;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
