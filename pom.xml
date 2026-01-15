@@ -5,26 +5,34 @@
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- 项目基础信息 -->
     <groupId>jp.adsur</groupId>
     <artifactId>redis-app</artifactId>
     <version>1.0-SNAPSHOT</version>
     <name>redis-app</name>
-    <description>Azure Redis with Managed Identity</description>
+    <description>Azure Redis Application (AccessKey Authentication / 6379 Port)</description>
 
+    <!-- 核心配置属性：仅保留必要项，版本集中管理 -->
     <properties>
         <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>2.7.0</spring-boot.version>
-        <!-- 1. 统一Netty版本（解决NoSuchMethodError） -->
-        <netty.version>4.1.94.Final</netty.version>
-        <!-- 2. Azure SDK版本（稳定无BUG） -->
-        <azure-core.version>1.25.0</azure-core.version>
-        <azure-identity.version>1.8.0</azure-identity.version>
     </properties>
 
-    <!-- 阿里云仓库（国内最快） -->
+    <!-- 版本依赖管理：统一管控Spring Boot所有子依赖版本，避免重复定义 -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- 阿里云Maven仓库：国内环境加速依赖下载（生产/开发均推荐） -->
     <repositories>
         <repository>
             <id>aliyunmaven</id>
@@ -34,65 +42,25 @@
         </repository>
     </repositories>
 
+    <!-- 核心依赖：仅保留业务必需的Spring Boot + Redis，无冗余 -->
     <dependencies>
-        <!-- Spring Boot核心依赖 -->
+        <!-- Spring Boot Web核心（内置Tomcat + MVC） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <version>${spring-boot.version}</version>
         </dependency>
+
+        <!-- Spring Data Redis（Lettuce客户端，自动适配Netty版本） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
-            <version>${spring-boot.version}</version>
-            <!-- 排除默认Netty，强制使用统一版本 -->
-            <exclusions>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- Azure SDK（排除冲突Netty） -->
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-identity</artifactId>
-            <version>${azure-identity.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.azure</groupId>
-                    <artifactId>azure-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-core</artifactId>
-            <version>${azure-core.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <!-- 3. 强制引入统一版本的Netty（解决版本冲突） -->
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>${netty.version}</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 
+    <!-- 构建配置：精简且符合Spring Boot打包规范 -->
     <build>
         <plugins>
+            <!-- Spring Boot打包插件：生成可执行JAR，自动处理依赖 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -105,6 +73,8 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Java编译插件：确保JDK版本/编码统一，避免编译乱码/版本问题 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

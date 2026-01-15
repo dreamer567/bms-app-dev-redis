@@ -1,32 +1,20 @@
 # Spring 基础配置
 spring:
-  # Redis核心配置（适配Azure Redis）
+  # Redis核心配置（Azure Redis - 6379端口/accesskey认证/非SSL）
   data:
     redis:
-      # Azure Redis主机名
       host: bms-dev-cache-001.redis.cache.windows.net
-      # SSL端口
-      port: 6380
-      # 强制SSL
-      ssl: true
-      # 超时配置
+      port: 6379
+      accesskey: jI7B2eul6bHnuDatwwdFvqW088x5lwK9MAzCaDsb00c=
+      # 超时配置（统一连接/命令超时）
       timeout: 30000ms
-      connect-timeout: 30000ms
-      # 密码留空（Token认证）
-      password: ""
-      # 连接池配置
+      # Lettuce连接池配置（核心池参数）
       lettuce:
         pool:
           max-active: 8
           max-idle: 8
           min-idle: 2
           max-wait: 30000ms
-
-# 托管标识配置（必须与代码@Value的key完全一致）
-redis:
-  mi:
-    client-id: fcd3d5e6-21dd-492a-a4ff-e738c64d8e39 # 2个空格缩进，不能少
-  scope: https://redis.azure.com/.default
 
 # 应用配置
 server:
@@ -37,6 +25,5 @@ server:
 logging:
   level:
     org.springframework.data.redis: DEBUG
-    com.azure.identity: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

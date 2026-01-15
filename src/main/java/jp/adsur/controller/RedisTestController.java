@@ -1,6 +1,10 @@
 package jp.adsur.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -9,41 +13,40 @@ import java.util.Map;
 
 @RestController
 public class RedisTestController {
+    private static final Logger log = LoggerFactory.getLogger(RedisTestController.class);
     private final StringRedisTemplate stringRedisTemplate;
 
-    // 构造器注入（Spring推荐方式）
+    // コンストラクタインジェクション（Spring推奨方式）
     public RedisTestController(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }
 
+    /**
+     * Redisの接続性をテスト（set/getの基本操作）
+     * 現在のaccesskey認証、6379ポート、非SSLのRedis設定に対応
+     */
     @GetMapping("/test-redis")
-    public String testRedis() {
+    public ResponseEntity<Map<String, Object>> testRedis() {
+        Map<String, Object> response = new HashMap<>();
         try {
-            // 简单的set/get操作，验证Redis连通性
-            String key = "test-key";
+            String key = "test-key-" + System.currentTimeMillis(); // キーの重複を回避
             String value = "test-value-" + System.currentTimeMillis();
 
-            // 执行set操作（避免使用复杂重载，用最基础的set方法）
+            // Redis set操作を実行
             stringRedisTemplate.opsForValue().set(key, value);
-
-            // 执行get操作
+            // Redis get操作を実行
             String result = stringRedisTemplate.opsForValue().get(key);
 
-            return "✅ Redis测试成功！key=" + key + ", value=" + result;
+            log.info("Redisテスト成功：key={}, value={}", key, result);
+            response.put("status", "success");
+            response.put("message", "Redisの接続性テストに成功しました");
+            response.put("data", Map.of("key", key, "value", result));
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            e.printStackTrace();
-            return "❌ Redis测试失败：" + e.getMessage();
+            log.error("Redisテストに失敗しました", e); // 問題調査のため完全なログスタックを出力
+            response.put("status", "error");
+            response.put("message", "Redisの接続性テストに失敗しました：" + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-    }
-
-    @GetMapping("/check-azure-env")
-    public Map<String, String> checkAzureEnv() {
-        Map<String, String> env = new HashMap<>();
-        // 托管标识的核心环境变量（App Service启用标识后自动注入）
-        env.put("IDENTITY_ENDPOINT", System.getenv("IDENTITY_ENDPOINT"));
-        env.put("IDENTITY_HEADER", System.getenv("IDENTITY_HEADER"));
-        env.put("WEBSITE_SITE_NAME", System.getenv("WEBSITE_SITE_NAME"));
-        env.put("WEBSITE_INSTANCE_ID", System.getenv("WEBSITE_INSTANCE_ID"));
-        return env;
     }
 }
