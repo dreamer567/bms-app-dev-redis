@@ -1,4 +1,26 @@
-<encoder>
-    <charset>UTF-8</charset>
-    <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
-</encoder>
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="30 seconds">
+    <!-- 日志级别常量定义 -->
+    <property name="LOG_LEVEL" value="INFO"/>
+    <!-- 日志格式常量 -->
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"/>
+
+    <!-- 控制台输出 Appender（核心：encoder 嵌套在 appender 内部） -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- encoder 必须放在 appender 内部，这是核心修正点 -->
+        <encoder>
+            <charset>UTF-8</charset> <!-- 支持日语日志无乱码 -->
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 根日志配置 -->
+    <root level="${LOG_LEVEL}">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- 自定义包的日志级别（比如你的 Redis 包） -->
+    <logger name="jp.adsur" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+</configuration>
