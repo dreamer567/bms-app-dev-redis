@@ -3,7 +3,7 @@ spring:
   # Redis核心配置（Azure Redis - 6379端口/accesskey认证/非SSL）
   data:
     redis:
-      host: bms-dev-cache-001.redis.cache.windows.net
+      host: 10.0.2.7
       port: 6379
       accesskey: jI7B2eul6bHnuDatwwdFvqW088x5lwK9MAzCaDsb00c=
       # 超时配置（统一连接/命令超时）
