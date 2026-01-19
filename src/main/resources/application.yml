@@ -5,7 +5,7 @@ spring:
     redis:
       host: 10.0.2.7
       port: 6379
-      accesskey: jI7B2eul6bHnuDatwwdFvqW088x5lwK9MAzCaDsb00c=
+      accesskey: ${REDIS_ACCESS_KEY}
       # 超时配置（统一连接/命令超时）
       timeout: 30000ms
       # Lettuce连接池配置（核心池参数）
