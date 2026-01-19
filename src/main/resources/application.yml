@@ -32,5 +32,5 @@ azure:
   entra:
     tenant-id: ${AZURE_TENANT_ID}  # 租户ID，可通过环境变量注入
     client-id: ${AZURE_CLIENT_ID}  # 应用客户端ID
-    client-secret: ${MS_P_AUTHENTICATION_SECRET}  # 应用客户端密钥
+    client-secret: ${AZURE_CLIENT_SECRET}  # 应用客户端密钥
     graph-api-version: v1.0  # Graph API版本
