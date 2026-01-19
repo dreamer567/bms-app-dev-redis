@@ -10,16 +10,19 @@
     <artifactId>redis-app</artifactId>
     <version>1.0-SNAPSHOT</version>
     <name>redis-app</name>
-    <description>Azure Redis Application (AccessKey Authentication / 6379 Port)</description>
+    <description>Azure Redis Application (AccessKey Authentication / 6379 Port) + Entra ID Delta Query</description>
 
-    <!-- 核心配置属性：仅保留必要项，版本集中管理 -->
+    <!-- 核心配置属性：新增Lombok版本，集中管理 -->
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>2.7.0</spring-boot.version>
+        <microsoft-graph.version>5.75.0</microsoft-graph.version>
+        <azure-identity.version>1.13.3</azure-identity.version>
+        <lombok.version>1.18.30</lombok.version> <!-- 适配Java 17的Lombok版本 -->
     </properties>
 
-    <!-- 版本依赖管理：统一管控Spring Boot所有子依赖版本，避免重复定义 -->
+    <!-- 版本依赖管理：统一管控所有核心依赖版本 -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -29,38 +32,80 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Graph SDK版本管控 -->
+            <dependency>
+                <groupId>com.microsoft.graph</groupId>
+                <artifactId>microsoft-graph</artifactId>
+                <version>${microsoft-graph.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-identity</artifactId>
+                <version>${azure-identity.version}</version>
+            </dependency>
+            <!-- Lombok版本管控 -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
-    <!-- 阿里云Maven仓库：国内环境加速依赖下载（生产/开发均推荐） -->
+    <!-- 阿里云Maven仓库 + Microsoft仓库 -->
     <repositories>
+<!--        <repository>-->
+<!--            <id>aliyunmaven</id>-->
+<!--            <url>https://maven.aliyun.com/repository/public</url>-->
+<!--            <releases><enabled>true</enabled></releases>-->
+<!--            <snapshots><enabled>false</enabled></snapshots>-->
+<!--        </repository>-->
         <repository>
-            <id>aliyunmaven</id>
-            <url>https://maven.aliyun.com/repository/public</url>
+            <id>microsoft-maven</id>
+            <url>https://maven.microsoft.com/repository/public</url>
             <releases><enabled>true</enabled></releases>
             <snapshots><enabled>false</enabled></snapshots>
         </repository>
     </repositories>
 
-    <!-- 核心依赖：仅保留业务必需的Spring Boot + Redis，无冗余 -->
+    <!-- 核心依赖：补充Lombok并确保配置完整 -->
     <dependencies>
-        <!-- Spring Boot Web核心（内置Tomcat + MVC） -->
+        <!-- Spring Boot Web核心 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Spring Data Redis（Lettuce客户端，自动适配Netty版本） -->
+        <!-- Spring Data Redis -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
+
+        <!-- Microsoft Graph核心（Delta查询） -->
+        <dependency>
+            <groupId>com.microsoft.graph</groupId>
+            <artifactId>microsoft-graph</artifactId>
+        </dependency>
+
+        <!-- Azure Identity认证 -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity</artifactId>
+        </dependency>
+
+        <!-- Lombok核心依赖（解决注解编译失败） -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope> <!-- 标记为provided，避免打包到JAR -->
+        </dependency>
     </dependencies>
 
-    <!-- 构建配置：精简且符合Spring Boot打包规范 -->
+    <!-- 构建配置：补充Lombok编译支持 -->
     <build>
         <plugins>
-            <!-- Spring Boot打包插件：生成可执行JAR，自动处理依赖 -->
+            <!-- Spring Boot打包插件 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -74,7 +119,7 @@
                 </executions>
             </plugin>
 
-            <!-- Java编译插件：确保JDK版本/编码统一，避免编译乱码/版本问题 -->
+            <!-- Java编译插件：确保Lombok注解编译生效 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -83,6 +128,14 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
+                    <!-- 显式指定Lombok处理器，解决注解编译问题 -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
         </plugins>
