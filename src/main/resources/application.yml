@@ -30,7 +30,7 @@ logging:
 
 azure:
   entra:
-    tenant-id: ${AZURE_TENANT_ID}  # 租户ID，可通过环境变量注入 dbc38394-3ce6-4b23-85c6-f6a64f6b904c
-    client-id: ${AZURE_CLIENT_ID}  # 应用客户端ID fcd3d5e6-21dd-492a-a4ff-e738c64d8e39
-    client-secret: ${MICROSOFT_PROVIDER_AUTHENTICATION_SECRET}  # 应用客户端密钥 RJw8Q~sET4Pzcyf4JA4Mjk2Kf5W40CIVHvbt3ddg
+    tenant-id: ${AZURE_TENANT_ID}  # 租户ID，可通过环境变量注入
+    client-id: ${AZURE_CLIENT_ID}  # 应用客户端ID
+    client-secret: ${MICROSOFT_PROVIDER_AUTHENTICATION_SECRET}  # 应用客户端密钥
     graph-api-version: v1.0  # Graph API版本
