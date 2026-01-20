@@ -24,7 +24,13 @@ server:
 # 日志配置
 logging:
   level:
-    org.springframework.data.redis: DEBUG
+    org.springframework.data.redis: ERROR
+    # Entra/Graph API核心包：设置为DEBUG级别（新增）
+    com.microsoft.graph: DEBUG          # Graph SDK核心操作日志（如Delta查询、用户/组操作）
+    com.azure.identity: DEBUG           # Azure Identity认证日志（如ClientSecretCredential获取Token）
+    com.microsoft.aad.msal4j: DEBUG     # MSAL4J认证日志（Graph认证底层依赖）
+    # 可选：Spring调用Graph的相关日志（若需要更详细的请求/响应）
+    org.springframework.web.client: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
