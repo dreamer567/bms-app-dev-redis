@@ -31,6 +31,7 @@ logging:
     com.microsoft.aad.msal4j: DEBUG     # MSAL4J认证日志（Graph认证底层依赖）
     # 可选：Spring调用Graph的相关日志（若需要更详细的请求/响应）
     org.springframework.web.client: DEBUG
+    jp.adsur.service: INFO # 你的服务类日志级别设为INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 

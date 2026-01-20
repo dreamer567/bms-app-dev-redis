@@ -22,15 +22,27 @@ public class EntraController {
      * 接口1：添加用户到现有组
      * 示例请求：POST /api/entra/add-user-to-group?userId=li.cailing@adsur.jp&groupId=现有组ID
      */
-    @PostMapping("/add-user-to-group")
-    public ResponseEntity<String> addUserToExistingGroup(
-            @RequestParam String userId,
-            @RequestParam String groupId) {
+//    @PostMapping("/add-user-to-group")
+//    public ResponseEntity<String> addUserToExistingGroup(
+//            @RequestParam String userId,
+//            @RequestParam String groupId) {
+//        try {
+//            entraService.addUserToGroup(groupId, userId);
+//            return ResponseEntity.ok("用户添加到现有组成功");
+//        } catch (Exception e) {
+//            return ResponseEntity.badRequest().body("操作失败：" + e.getMessage());
+//        }
+//    }
+
+    // 正确调用示例（控制器中）
+    @GetMapping("/add-user")
+    public String addUser(String groupId, String userEmail) {
         try {
-            entraService.addUserToGroup(groupId, userId);
-            return ResponseEntity.ok("用户添加到现有组成功");
+            // 直接传入邮箱，内部会自动通过$filter查Object ID
+            entraService.addUserToGroup(groupId, userEmail);
+            return "添加成功";
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("操作失败：" + e.getMessage());
+            return "添加失败：" + e.getMessage();
         }
     }
 
