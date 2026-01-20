@@ -20,8 +20,8 @@ public class EntraGroupUserService {
     private GraphServiceClient<?> graphClient;
 
     /**
-     * 最终版：完全匹配5.75.0源码的post(DirectoryObject)调用方式
-     * 核心：调用你贴的DirectoryObjectCollectionReferenceRequest.post(DirectoryObject)
+     * 最终定稿：完全匹配5.75.0 SDK源码
+     * references().post() 仅接受 DirectoryObject 类型参数，解决所有编译/运行错误
      */
     public void addUserToGroup(String groupId, String userEmail) {
         try {
@@ -45,66 +45,67 @@ public class EntraGroupUserService {
                 throw new RuntimeException("用户" + userEmail + "不存在，请核对真实UPN");
             }
 
-            // 2. 提取用户ID，构造DirectoryObject（匹配你源码的参数类型）
+            // 2. 提取用户ID，构造DirectoryObject（SDK要求的唯一参数类型）
             User targetUser = userOptional.get();
-            String userObjectId = targetUser.id;
+            String userObjectId = targetUser.id; // 直接访问公有字段，无getId()方法
             String realUPN = targetUser.userPrincipalName;
             log.info("✅ 查询到用户：UPN={}, ObjectID={}", realUPN, userObjectId);
 
-            // 3. 构造DirectoryObject对象（你源码要求的参数类型）
+            // 3. 构造DirectoryObject（references().post()唯一合法参数）
             DirectoryObject userDirectoryObject = new DirectoryObject();
-            userDirectoryObject.id = userObjectId; // 核心：设置用户Object ID
+            userDirectoryObject.id = userObjectId; // 仅需设置ID，SDK自动处理@odata.id
 
-            // 4. 核心调用：匹配你贴的源码——post(DirectoryObject)
-            // graphClient.groups(groupId).members()返回DirectoryObjectCollectionReferenceRequest
-            // 直接调用post(DirectoryObject)，完全对齐源码
+            // 4. 核心正确调用（完全匹配5.75.0 SDK源码）
+            // references() → 对应/$ref端点（解决400错误）
+            // post(DirectoryObject) → 唯一参数，符合SDK方法签名
             graphClient.groups(groupId)
-                    .members() // 返回DirectoryObjectCollectionReferenceRequest
+                    .members()
+                    .references() // 必须加：对应/$ref端点，避免"Unsupported resource type"
                     .buildRequest()
-                    .post(userDirectoryObject); // 传入DirectoryObject，匹配你源码的参数类型
+                    .post(userDirectoryObject); // 仅传DirectoryObject，无其他参数
 
             log.info("✅ 用户{}（UPN：{}）已成功添加到组{}", userObjectId, realUPN, groupId);
 
         } catch (Exception e) {
-            log.error("添加用户到组失败（核心错误）：", e); // 打印完整堆栈
+            log.error("添加用户到组失败（完整堆栈）：", e); // 打印行号+详细错误
             throw new RuntimeException("添加用户到组失败：" + e.getMessage(), e);
         }
     }
 
     /**
-     * 创建新组并添加用户（5.75.0原生API）
+     * 创建新组并添加用户（适配5.75.0 SDK）
      */
     public String createNewGroupAndAddUser(String userEmail, String newGroupName, String newGroupDescription) {
         try {
-            // 1. 构建新组（安全组，必填项完整）
+            // 1. 构建合法安全组（避免400错误）
             Group newGroup = new Group();
             newGroup.displayName = newGroupName;
             newGroup.description = newGroupDescription;
-            // mailNickname：仅保留字母数字，避免非法字符
+            // mailNickname：仅保留字母数字，SDK强制要求
             newGroup.mailNickname = newGroupName.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
             newGroup.groupTypes = Collections.emptyList(); // 安全组标识
             newGroup.securityEnabled = true;
             newGroup.mailEnabled = false;
 
-            // 2. 创建组（5.75.0原生POST）
+            // 2. 创建组（5.75.0原生API）
             Group createdGroup = graphClient.groups()
                     .buildRequest()
                     .post(newGroup);
             String newGroupId = createdGroup.id;
             log.info("✅ 新组创建成功：名称={}, ID={}", newGroupName, newGroupId);
 
-            // 3. 添加用户到新组（调用匹配源码的addUserToGroup）
+            // 3. 添加用户到新组（调用最终版方法）
             addUserToGroup(newGroupId, userEmail);
-
             return newGroupId;
+
         } catch (Exception e) {
-            log.error("创建新组失败：", e);
+            log.error("创建新组失败（完整堆栈）：", e);
             throw new RuntimeException("创建新组失败：" + e.getMessage(), e);
         }
     }
 
     /**
-     * 辅助方法：获取用户ID（修复User::getId无效问题）
+     * 辅助方法：获取用户ID（无编译错误）
      */
     public String getUserIdByEmail(String userEmail) {
         UserCollectionPage userPage = graphClient.users()
@@ -113,10 +114,9 @@ public class EntraGroupUserService {
                 .select("id")
                 .get();
 
-        // 用lambda访问id字段，替代无效的User::getId方法引用
         return userPage.getCurrentPage().stream()
                 .findFirst()
-                .map(user -> user.id) // 直接访问公有字段id，无getId()方法
+                .map(user -> user.id) // 直接访问id字段，替代无效的User::getId
                 .orElseThrow(() -> new RuntimeException("用户" + userEmail + "不存在"));
     }
 }
