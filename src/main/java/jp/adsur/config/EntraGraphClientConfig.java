@@ -7,6 +7,7 @@ import com.microsoft.graph.requests.GraphServiceClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
 
@@ -23,26 +24,39 @@ public class EntraGraphClientConfig {
     private String clientSecret;
 
     /**
-     * 恢复ClientSecret认证（禁用MSI后专用）
+     * 单例ClientSecretCredential Bean（供graphClient和Token获取复用）
+     * 核心：避免重复创建，解决Bean冲突
      */
     @Bean
-    public GraphServiceClient<?> graphServiceClient() {
-        // 1. 构建客户端密钥认证（核心：恢复ClientSecretCredential）
-        ClientSecretCredential credential = new ClientSecretCredentialBuilder()
+    public ClientSecretCredential clientSecretCredential() {
+        return new ClientSecretCredentialBuilder()
                 .tenantId(tenantId)
                 .clientId(clientId)
                 .clientSecret(clientSecret)
                 .build();
+    }
 
-        // 2. 配置Graph API权限
+    /**
+     * 保留GraphServiceClient Bean（用于查询用户、创建组）
+     */
+    @Bean
+    public GraphServiceClient<?> graphServiceClient() {
+        // 复用上面的ClientSecretCredential Bean，避免重复创建
         TokenCredentialAuthProvider authProvider = new TokenCredentialAuthProvider(
                 Collections.singletonList("https://graph.microsoft.com/.default"),
-                credential
+                clientSecretCredential() // 注入上面的单例Bean
         );
 
-        // 3. 创建Graph客户端
         return GraphServiceClient.builder()
                 .authenticationProvider(authProvider)
                 .buildClient();
+    }
+
+    /**
+     * 添加RestTemplate Bean（用于手动调用/$ref端点）
+     */
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }
