@@ -23,11 +23,11 @@ public class EntraGraphClientConfig {
     private String clientSecret;
 
     /**
-     * 创建Microsoft Graph客户端（核心Bean）
+     * 恢复ClientSecret认证（禁用MSI后专用）
      */
     @Bean
     public GraphServiceClient<?> graphServiceClient() {
-        // 1. 构建客户端凭据认证
+        // 1. 构建客户端密钥认证（核心：恢复ClientSecretCredential）
         ClientSecretCredential credential = new ClientSecretCredentialBuilder()
                 .tenantId(tenantId)
                 .clientId(clientId)
