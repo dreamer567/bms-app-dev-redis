@@ -27,7 +27,7 @@ public class EntraController {
             @RequestParam String userId,
             @RequestParam String groupId) {
         try {
-            entraService.addUserToExistingGroup(userId, groupId);
+            entraService.addUserToGroup(groupId, userId);
             return ResponseEntity.ok("用户添加到现有组成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("操作失败：" + e.getMessage());
