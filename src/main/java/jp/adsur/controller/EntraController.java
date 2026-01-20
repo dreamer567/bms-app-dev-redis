@@ -1,4 +1,5 @@
 package jp.adsur.controller;
+
 import jp.adsur.service.EntraDeltaQueryService;
 import jp.adsur.service.EntraGroupUserService;
 import lombok.RequiredArgsConstructor;
@@ -13,32 +14,36 @@ public class EntraController {
     private final EntraGroupUserService entraService;
     private final EntraDeltaQueryService deltaQueryService;
 
+    /**
+     * ユーザーデルタクエリを実行
+     * @param deltaLink デルタリンク（任意パラメータ）
+     * @return デルタクエリ結果
+     */
     @GetMapping("/user-delta")
     public EntraDeltaQueryService.DeltaQueryResult getUserDelta(
             @RequestParam(required = false) String deltaLink) {
         return deltaQueryService.queryUserDelta(deltaLink);
     }
+
     /**
-     * 接口1：添加用户到现有组
-     * 示例请求：POST /api/entra/add-user-to-group?userId=li.cailing@adsur.jp&groupId=现有组ID
+     * API1：既存のグループにユーザーを追加
+     * リクエスト例：POST /api/entra/add-user?groupId=既存のグループID&userEmail=li.cailing@adsur.jp
      */
-    // 正确调用示例（控制器中）
     @PostMapping("/add-user")
     public String addUser(String groupId, String userEmail) {
         try {
-            // 直接传入邮箱，内部会自动通过$filter查Object ID
+            // メールアドレスを直接渡す：内部で$filterでObject IDを自動検索
             entraService.addUserToGroup(groupId, userEmail);
-            return "添加成功";
+            return "✅ ユーザーの追加に成功しました";
         } catch (Exception e) {
-            return "添加失败：" + e.getMessage();
+            return "❌ ユーザーの追加に失敗しました：" + e.getMessage();
         }
     }
 
     /**
-     * 接口2：创建新组并添加用户
-     * 示例请求：POST /api/entra/create-group?userEmail={UPN}&groupName=测试组&groupDesc=测试用组
+     * API2：新規グループを作成してユーザーを追加
+     * リクエスト例：POST /api/entra/create-group?userEmail={UPN}&groupName=テストグループ&groupDesc=テスト用グループ
      */
-    // 创建新组并添加用户
     @PostMapping("/create-group")
     public String createGroup(
             @RequestParam String userEmail,
@@ -47,9 +52,9 @@ public class EntraController {
     ) {
         try {
             String groupId = entraService.createNewGroupAndAddUser(userEmail, groupName, groupDesc);
-            return "✅ 操作成功：新组ID=" + groupId;
+            return "✅ 操作に成功しました：新規グループID=" + groupId;
         } catch (Exception e) {
-            return "❌ 操作失败：" + e.getMessage();
+            return "❌ 操作に失敗しました：" + e.getMessage();
         }
     }
 }

@@ -21,27 +21,27 @@ public class EntraDeltaQueryService {
     private GraphServiceClient<?> graphClient;
 
     /**
-     * Delta查询：获取Entra ID用户的增量变更（适配SDK 5.x，解决deltaLink获取问题）
-     * @param deltaLink 上一次查询返回的deltaLink（首次查询传null/空）
-     * @return 封装后的增量查询结果（用户列表 + 新的deltaLink）
+     * デルタクエリ：Entra IDユーザーの増分変更を取得（SDK 5.x対応：デルタリンクの取得問題を解決）
+     * @param deltaLink 前回のクエリで返却されたデルタリンク（初回クエリはnull/空文字を渡す）
+     * @return カプセル化された増分クエリ結果（ユーザーリスト + 新しいデルタリンク）
      */
     public DeltaQueryResult queryUserDelta(String deltaLink) {
-        // 存储所有增量用户数据
+        // 全ての増分ユーザーデータを格納
         List<User> allDeltaUsers = new ArrayList<>();
-        // 最终要返回的新deltaLink
+        // 最終的に返却する新しいデルタリンク
         String newDeltaLink = null;
         UserDeltaCollectionPage deltaPage = null;
 
         try {
             if (deltaLink == null || deltaLink.isEmpty()) {
-                // 首次查询：初始化Delta查询
+                // 初回クエリ：デルタクエリを初期化
                 deltaPage = graphClient.users()
                         .delta()
                         .buildRequest()
                         .select("id,displayName,userPrincipalName,mail")
                         .get();
             } else {
-                // 后续查询：5.x版本正确的deltaLink续传方式
+                // 後続クエリ：5.xバージョンの正しいデルタリンク継続方式
                 URL deltaUrl = new URL(deltaLink);
                 UserDeltaCollectionRequestBuilder deltaRequestBuilder =
                         new UserDeltaCollectionRequestBuilder(
@@ -52,52 +52,52 @@ public class EntraDeltaQueryService {
                 deltaPage = deltaRequestBuilder.buildRequest().get();
             }
 
-            // 处理分页：遍历所有页面，收集增量数据，并获取最终的deltaLink
+            // ページング処理：全ページを走査して増分データを収集し、最終的なデルタリンクを取得
             while (deltaPage != null) {
-                // 收集当前页的增量用户数据
+                // 現在のページの増分ユーザーデータを収集
                 allDeltaUsers.addAll(deltaPage.getCurrentPage());
-                // 获取当前页的deltaLink（优先取这个，分页场景下最后一页的deltaLink才有效）
+                // 現在のページのデルタリンクを取得（優先：ページングシナリオで最終ページのデルタリンクのみ有効）
                 newDeltaLink = deltaPage.deltaLink();
 
-                // 处理下一页：若有下一页，继续获取
+                // 次のページを処理：次のページが存在する場合は続けて取得
                 UserDeltaCollectionRequestBuilder nextPageBuilder = deltaPage.getNextPage();
                 if (nextPageBuilder != null) {
                     deltaPage = nextPageBuilder.buildRequest().get();
                 } else {
-                    // 无下一页，终止循环
+                    // 次のページがない場合、ループを終了
                     deltaPage = null;
                 }
             }
 
-            // 打印增量数据示例
+            // 増分データのサンプル出力
             for (User user : allDeltaUsers) {
-                log.info("增量用户：ID=%s, 名称=%s, 邮箱=%s%n",
+                log.info("増分ユーザー：ID=%s, 名前=%s, メール=%s%n",
                         user.id, user.displayName, user.userPrincipalName);
             }
 
             return new DeltaQueryResult(allDeltaUsers, newDeltaLink);
 
         } catch (MalformedURLException e) {
-            throw new RuntimeException("DeltaLink格式错误：" + deltaLink, e);
+            throw new RuntimeException("デルタリンクの形式が不正です：" + deltaLink, e);
         } catch (Exception e) {
-            throw new RuntimeException("Delta查询失败：" + e.getMessage(), e);
+            throw new RuntimeException("デルタクエリの実行に失敗しました：" + e.getMessage(), e);
         }
     }
 
     /**
-     * 封装Delta查询结果（用户列表 + 新的deltaLink）
-     * （若用Lombok，可加@Data注解简化getter/setter）
+     * デルタクエリの結果をカプセル化（ユーザーリスト + 新しいデルタリンク）
+     * （Lombokを使用する場合は@Dataアノテーションでgetter/setterを簡略化可）
      */
     public static class DeltaQueryResult {
-        private List<User> deltaUsers; // 所有增量用户数据
-        private String newDeltaLink;   // 下次查询用的deltaLink
+        private List<User> deltaUsers; // 全ての増分ユーザーデータ
+        private String newDeltaLink;   // 次回クエリに使用するデルタリンク
 
         public DeltaQueryResult(List<User> deltaUsers, String newDeltaLink) {
             this.deltaUsers = deltaUsers;
             this.newDeltaLink = newDeltaLink;
         }
 
-        // Getter（必须，否则上层无法获取结果）
+        // Getter（必須：上位層で結果を取得するため）
         public List<User> getDeltaUsers() {
             return deltaUsers;
         }
