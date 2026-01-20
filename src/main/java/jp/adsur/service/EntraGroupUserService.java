@@ -4,9 +4,11 @@ import com.microsoft.graph.models.Group;
 import com.microsoft.graph.models.User;
 import com.microsoft.graph.requests.GraphServiceClient;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class EntraGroupUserService {
 
@@ -32,7 +34,7 @@ public class EntraGroupUserService {
                     .buildRequest()
                     .post(user);
 
-            System.out.printf("用户[%s]已成功添加到现有组[%s]%n", user.userPrincipalName, group.displayName);
+            log.info("用户[%s]已成功添加到现有组[%s]%n", user.userPrincipalName, group.displayName);
         } catch (Exception e) {
             throw new Exception("添加用户到现有组失败：" + e.getMessage(), e);
         }
@@ -60,7 +62,7 @@ public class EntraGroupUserService {
             Group createdGroup = graphClient.groups()
                     .buildRequest()
                     .post(newGroup);
-            System.out.printf("新组[%s]创建成功，组ID：%s%n", newGroupName, createdGroup.id);
+            log.info("新组[%s]创建成功，组ID：%s%n", newGroupName, createdGroup.id);
 
             // 步骤2：将用户添加到新建组
             User user = graphClient.users(userId).buildRequest().get();
@@ -70,7 +72,7 @@ public class EntraGroupUserService {
                     .buildRequest()
                     .post(user);
 
-            System.out.printf("用户[%s]已成功添加到新组[%s]%n", user.userPrincipalName, newGroupName);
+            log.info("用户[%s]已成功添加到新组[%s]%n", user.userPrincipalName, newGroupName);
             return createdGroup.id;
         } catch (Exception e) {
             throw new Exception("创建新组并添加用户失败：" + e.getMessage(), e);

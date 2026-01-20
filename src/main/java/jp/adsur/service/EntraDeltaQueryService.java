@@ -4,6 +4,7 @@ import com.microsoft.graph.models.User;
 import com.microsoft.graph.requests.GraphServiceClient;
 import com.microsoft.graph.requests.UserDeltaCollectionPage;
 import com.microsoft.graph.requests.UserDeltaCollectionRequestBuilder;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Slf4j
 public class EntraDeltaQueryService {
 
     @Resource
@@ -69,7 +71,7 @@ public class EntraDeltaQueryService {
 
             // 打印增量数据示例
             for (User user : allDeltaUsers) {
-                System.out.printf("增量用户：ID=%s, 名称=%s, 邮箱=%s%n",
+                log.info("增量用户：ID=%s, 名称=%s, 邮箱=%s%n",
                         user.id, user.displayName, user.userPrincipalName);
             }
 
