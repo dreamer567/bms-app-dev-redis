@@ -35,7 +35,7 @@ public class EntraController {
 //    }
 
     // 正确调用示例（控制器中）
-    @GetMapping("/add-user")
+    @PostMapping("/add-user")
     public String addUser(String groupId, String userEmail) {
         try {
             // 直接传入邮箱，内部会自动通过$filter查Object ID
@@ -50,16 +50,18 @@ public class EntraController {
      * 接口2：创建新组并添加用户
      * 示例请求：POST /api/entra/create-group-and-add-user?userId=li.cailing@adsur.jp&newGroupName=测试组&newGroupDescription=测试用组
      */
-    @PostMapping("/create-group-and-add-user")
-    public ResponseEntity<String> createNewGroupAndAddUser(
-            @RequestParam String userId,
-            @RequestParam String newGroupName,
-            @RequestParam String newGroupDescription) {
+    // 创建新组并添加用户
+    @PostMapping("/create-group")
+    public String createGroup(
+            @RequestParam String userEmail,
+            @RequestParam String groupName,
+            @RequestParam String groupDesc
+    ) {
         try {
-            String groupId = entraService.createNewGroupAndAddUser(userId, newGroupName, newGroupDescription);
-            return ResponseEntity.ok("新组创建并添加用户成功，组ID：" + groupId);
+            String groupId = entraService.createNewGroupAndAddUser(userEmail, groupName, groupDesc);
+            return "✅ 操作成功：新组ID=" + groupId;
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("操作失败：" + e.getMessage());
+            return "❌ 操作失败：" + e.getMessage();
         }
     }
 }
