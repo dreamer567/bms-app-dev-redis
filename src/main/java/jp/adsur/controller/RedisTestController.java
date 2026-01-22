@@ -1,22 +1,25 @@
 package jp.adsur.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestController
+@Slf4j
 public class RedisTestController {
-    private static final Logger log = LoggerFactory.getLogger(RedisTestController.class);
+
     private final StringRedisTemplate stringRedisTemplate;
 
-    // コンストラクタインジェクション（Spring推奨方式）
+    // 构造器注入（推荐的Spring依赖注入方式）
     public RedisTestController(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }
@@ -29,8 +32,11 @@ public class RedisTestController {
     public ResponseEntity<Map<String, Object>> testRedis() {
         Map<String, Object> response = new HashMap<>();
         try {
-            String key = "test-key-" + System.currentTimeMillis(); // キーの重複を回避
-            String value = "test-value-" + System.currentTimeMillis();
+            // 1. 获取当前时间（东京时区，适配对日项目），格式化为「x年x月x日x时x分x秒x毫秒」
+            String timeStr = getFormattedCurrentTime();
+            // 2. 生成唯一key和value（避免重复，同时时间格式可读）
+            String key = "test-key-" + timeStr;
+            String value = "test-value-" + timeStr;
 
             // Redis set操作を実行
             stringRedisTemplate.opsForValue().set(key, value);
@@ -48,5 +54,18 @@ public class RedisTestController {
             response.put("message", "Redisの接続性テストに失敗しました：" + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+    }
+
+    /**
+     * 現在の時刻を「yyyy年MM月dd日HH時mm分ss秒SSS毫秒」形式にフォーマット（東京タイムゾーン）
+     * @return フォーマット済みの時間文字列
+     */
+    private String getFormattedCurrentTime() {
+        // 1. 定义时间格式：年-月-日 时-分-秒-毫秒（日语习惯格式）
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy年MM月dd日HH時mm分ss秒SSS毫秒");
+        // 2. 获取东京时区的当前时间（对日项目核心适配点）
+        LocalDateTime currentTime = LocalDateTime.now(ZoneId.of("Asia/Tokyo"));
+        // 3. 格式化返回
+        return currentTime.format(formatter);
     }
 }
