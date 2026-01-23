@@ -1,5 +1,41 @@
+server:
+  port: 80
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
 # Spring 基础配置
 spring:
+  # 1. PostgreSQL数据源配置（核心）
+  datasource:
+    # 驱动类名（适配PostgreSQL 42.x版本，Spring Boot 2.7.x推荐）
+    driver-class-name: org.postgresql.Driver
+    # 数据库连接URL（重点：指定东京时区、UTF8编码，适配对日项目）
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:redis_app_db}?serverTimezone=Asia/Tokyo&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
+    # 数据库账号密码（通过环境变量注入，避免硬编码，符合对日项目安全规范）
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    # 2. HikariCP连接池配置（Spring Boot默认，生产级优化）
+    hikari:
+      # 连接池名称
+      pool-name: PostgreSQL-Hikari-Pool
+      # 最小空闲连接数（适配低并发场景）
+      minimum-idle: 5
+      # 最大连接数（根据服务器性能调整，对日项目通常设10-20）
+      maximum-pool-size: 10
+      # 连接超时时间（30秒）
+      connection-timeout: 30000
+      # 连接最大存活时间（1小时）
+      max-lifetime: 3600000
+      # 空闲连接超时时间（10分钟）
+      idle-timeout: 600000
+      # 测试连接是否有效（避免无效连接）
+      validation-timeout: 5000
+      # 测试连接的SQL（PostgreSQL专用）
+      connection-test-query: SELECT 1
+
   # Redis核心配置（Azure Redis - 6379端口/accesskey认证/非SSL）
   data:
     redis:
@@ -16,24 +52,27 @@ spring:
           min-idle: 2
           max-wait: 30000ms
 
-# 应用配置
-server:
-  port: 80
-  shutdown: immediate
+# MyBatis配置（可选：如果使用MyBatis操作PostgreSQL）
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: jp.adsur.db.entity
+  configuration:
+    map-underscore-to-camel-case: true # 下划线转驼峰（对日项目常用）
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl # 日志适配
 
 # 日志配置
 logging:
   level:
-    org.springframework.data.redis: ERROR
+    org.springframework.data.redis: INFO
     # Entra/Graph API核心包：设置为DEBUG级别（新增）
-    com.microsoft.graph: DEBUG          # Graph SDK核心操作日志（如Delta查询、用户/组操作）
-    com.azure.identity: DEBUG           # Azure Identity认证日志（如ClientSecretCredential获取Token）
-    com.microsoft.aad.msal4j: DEBUG     # MSAL4J认证日志（Graph认证底层依赖）
-    # 可选：Spring调用Graph的相关日志（若需要更详细的请求/响应）
-    org.springframework.web.client: DEBUG
+    com.microsoft.graph: INFO          # Graph SDK核心操作日志（如Delta查询、用户/组操作）
+    com.azure.identity: INFO           # Azure Identity认证日志（如ClientSecretCredential获取Token）
+    com.microsoft.aad.msal4j: INFO     # MSAL4J认证日志（Graph认证底层依赖）
+    org.springframework.web.client: INFO # 可选：Spring调用Graph的相关日志（若需要更详细的请求/响应）
+    org.springframework.jdbc.core: DEBUG # 打印JDBC执行SQL（开发环境）
     jp.adsur.service: INFO # 你的服务类日志级别设为INFO
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss SSS} [%thread] %-5level %logger{36} - %msg%n"
 
 azure:
   entra:

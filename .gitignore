@@ -11,6 +11,7 @@ target/
 *.iws
 *.iml
 *.ipr
+/.idea/dictionaries/project.xml
 
 ### Eclipse ###
 .apt_generated
@@ -36,4 +37,3 @@ build/
 
 ### Mac OS ###
 .DS_Store
-/logs/redis-app.log
