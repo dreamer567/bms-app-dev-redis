@@ -13,7 +13,7 @@ spring:
     # 驱动类名（适配PostgreSQL 42.x版本，Spring Boot 2.7.x推荐）
     driver-class-name: org.postgresql.Driver
     # 数据库连接URL（重点：指定东京时区、UTF8编码，适配对日项目）
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:redis_app_db}?serverTimezone=Asia/Tokyo&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:demo_schema}?serverTimezone=Asia/Tokyo&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
     # 数据库账号密码（通过环境变量注入，避免硬编码，符合对日项目安全规范）
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
@@ -39,9 +39,9 @@ spring:
   # Redis核心配置（Azure Redis - 6379端口/accesskey认证/非SSL）
   data:
     redis:
-      host: 10.0.2.7
-      port: 6379
-      accesskey: ${REDIS_ACCESS_KEY}
+      host: bms-dev-cache-002.japanwest.redis.azure.net:10000
+      port: 10000
+      ssl: true
       # 超时配置（统一连接/命令超时）
       timeout: 30000ms
       # Lettuce连接池配置（核心池参数）
