@@ -36,7 +36,7 @@ spring:
       # 测试连接的SQL（PostgreSQL专用）
       connection-test-query: SELECT 1
 
-  # Redis核心配置（Azure Redis - 6379端口/accesskey认证/非SSL）
+  # Redis核心配置
   data:
     redis:
       host: bms-dev-cache-002.japanwest.redis.azure.net:10000
