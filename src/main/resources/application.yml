@@ -39,7 +39,7 @@ spring:
   # Redis核心配置
   data:
     redis:
-      host: bms-dev-cache-002.japanwest.redis.azure.net:10000
+      host: bms-dev-cache-002.japanwest.redis.azure.net
       port: 10000
       ssl: true
       # 超时配置（统一连接/命令超时）

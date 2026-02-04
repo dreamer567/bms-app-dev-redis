@@ -29,8 +29,13 @@ public class RedisConfig {
      */
     private String getRedisAccessToken() throws ExecutionException, InterruptedException {
         var credential = new DefaultAzureCredentialBuilder().build();
+
+        // 拼接成合法的 scope
+        String scope = String.format("https://%s:10225/appid/.default", redisHost);
+
         var tokenRequestContext = new TokenRequestContext()
-                .addScopes("https://*.cacheinfra.windows.net:10225/appid/.default");
+                .addScopes(scope);
+
         AccessToken token = credential.getToken(tokenRequestContext).toFuture().get();
         return token.getToken();
     }
