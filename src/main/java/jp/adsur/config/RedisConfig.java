@@ -34,9 +34,9 @@ public class RedisConfig {
         ManagedIdentityCredential credential = new ManagedIdentityCredentialBuilder().build();
 
         // Redis 的 scope 格式：使用主机名 + 10225 端口 + /.default
-        String scope = String.format("https://%s:%s/.default", redisHost, redisPort);
+//        String scope = String.format("https://%s:%s/.default", redisHost, redisPort);
 
-        TokenRequestContext request = new TokenRequestContext().addScopes(scope);
+        TokenRequestContext request = new TokenRequestContext().addScopes("https://redis.azure.com/.default");
 
         AccessToken token = credential.getToken(request).toFuture().get();
         return token.getToken();
