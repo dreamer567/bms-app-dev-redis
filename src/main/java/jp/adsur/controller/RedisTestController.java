@@ -5,8 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import lombok.extern.slf4j.Slf4j;
+import redis.clients.jedis.JedisPooled;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -17,18 +17,16 @@ import java.util.Map;
 @RestController
 @Slf4j
 public class RedisTestController {
+    private final JedisPooled redisClient;
 
-    private final StringRedisTemplate stringRedisTemplate;
-
-    // 注入 Redis host/port，仅用于日志输出
     @Value("${spring.data.redis.host}")
     private String redisHost;
 
     @Value("${spring.data.redis.port}")
     private int redisPort;
 
-    public RedisTestController(StringRedisTemplate stringRedisTemplate) {
-        this.stringRedisTemplate = stringRedisTemplate;
+    public RedisTestController(JedisPooled redisClient) {
+        this.redisClient = redisClient;
     }
 
     /**
@@ -43,9 +41,9 @@ public class RedisTestController {
             String value = "テスト値-" + timeStr;
 
             // Redisにセット
-            stringRedisTemplate.opsForValue().set(key, value);
+            redisClient.set(key, value);
             // Redisから取得
-            String result = stringRedisTemplate.opsForValue().get(key);
+            String result = redisClient.get(key);
 
             log.info("Redis接続テスト成功：host={}, port={}, key={}, value={}", redisHost, redisPort, key, result);
             response.put("status", "成功");
