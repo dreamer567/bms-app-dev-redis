@@ -1,5 +1,6 @@
 package jp.adsur.controller;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,13 @@ public class RedisTestController {
 
     private final StringRedisTemplate stringRedisTemplate;
 
+    // 注入 Redis host/port，仅用于日志输出
+    @Value("${spring.data.redis.host}")
+    private String redisHost;
+
+    @Value("${spring.data.redis.port}")
+    private int redisPort;
+
     public RedisTestController(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }
@@ -30,7 +38,6 @@ public class RedisTestController {
     public ResponseEntity<Map<String, Object>> testRedis() {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 現在時刻取得（東京タイムゾーン）
             String timeStr = getFormattedCurrentTime();
             String key = "テストキー-" + timeStr;
             String value = "テスト値-" + timeStr;
@@ -40,13 +47,18 @@ public class RedisTestController {
             // Redisから取得
             String result = stringRedisTemplate.opsForValue().get(key);
 
-            log.info("Redis接続テスト成功：key={}, value={}", key, result);
+            log.info("Redis接続テスト成功：host={}, port={}, key={}, value={}", redisHost, redisPort, key, result);
             response.put("status", "成功");
             response.put("message", "Redis接続テストに成功しました（Azure Managed Identity + TLS）");
-            response.put("data", Map.of("key", key, "value", result));
+            response.put("data", Map.of(
+                    "redisHost", redisHost,
+                    "redisPort", redisPort,
+                    "key", key,
+                    "value", result
+            ));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("Redis接続テスト失敗", e);
+            log.error("Redis接続テスト失敗：host={}, port={}", redisHost, redisPort, e);
             response.put("status", "エラー");
             response.put("message", "Redis接続テストに失敗しました：" + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);

@@ -1,5 +1,6 @@
 package jp.adsur.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
@@ -16,11 +17,15 @@ import java.util.concurrent.ExecutionException;
 @Configuration
 public class RedisConfig {
 
-    private static final String REDIS_HOST = "bms-dev-cache-002.japanwest.redis.azure.net";
-    private static final int REDIS_PORT = 10000; // TLS端口
+    // 从 application.yml 注入 host 和 port
+    @Value("${spring.data.redis.host}")
+    private String redisHost;
+
+    @Value("${spring.data.redis.port}")
+    private int redisPort;
 
     /**
-     * 获取 Azure Redis 的 AccessToken
+     * 获取 Azure Redis 的 AccessToken（Managed Identity）
      */
     private String getRedisAccessToken() throws ExecutionException, InterruptedException {
         var credential = new DefaultAzureCredentialBuilder().build();
@@ -32,19 +37,18 @@ public class RedisConfig {
 
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() throws ExecutionException, InterruptedException {
-        // 1️⃣ Redis 主机配置
+        // Redis 主机配置
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
-        redisConfig.setHostName(REDIS_HOST);
-        redisConfig.setPort(REDIS_PORT);
-        redisConfig.setUsername("default");           // Azure Redis OAuth 用户
-        redisConfig.setPassword(getRedisAccessToken()); // OAuth token 作为密码
+        redisConfig.setHostName(redisHost);             // 从配置文件读取
+        redisConfig.setPort(redisPort);                // 从配置文件读取
+        redisConfig.setUsername("default");            // Azure Redis OAuth 用户
+        redisConfig.setPassword(getRedisAccessToken()); // Token 作为密码
 
-        // 2️⃣ Lettuce 客户端配置：仅启用 TLS
+        // Lettuce 客户端配置：启用 TLS
         LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .useSsl()  // TLS
+                .useSsl() // TLS
                 .build();
 
-        // 3️⃣ 返回 LettuceConnectionFactory
         return new LettuceConnectionFactory(redisConfig, clientConfig);
     }
 
