@@ -2,8 +2,10 @@ package jp.adsur.config;
 
 import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
-import com.azure.identity.DefaultAzureCredential;
-import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.identity.ManagedIdentityCredential;
+import com.azure.identity.ManagedIdentityCredentialBuilder;
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.TimeoutOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,12 +14,12 @@ import org.springframework.data.redis.connection.lettuce.LettuceClientConfigurat
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 
 @Configuration
 public class RedisConfig {
 
-    // 从 application.yml 注入 host 和 port
     @Value("${spring.data.redis.host}")
     private String redisHost;
 
@@ -25,36 +27,32 @@ public class RedisConfig {
     private int redisPort;
 
     /**
-     * 获取 Azure Redis 的 AccessToken（Managed Identity）
+     * 使用 Managed Identity 获取 Redis 的 Access Token
      */
     private String getRedisAccessToken() throws ExecutionException, InterruptedException {
-        DefaultAzureCredential credential = new DefaultAzureCredentialBuilder().build();
+        // 只使用 ManagedIdentityCredential
+        ManagedIdentityCredential credential = new ManagedIdentityCredentialBuilder().build();
 
-        // Azure Redis Token scope
-        String scope = String.format("https://%s/.default", redisHost);
+        // Redis 的 scope 格式：使用主机名 + 10225 端口 + /.default
+        String scope = String.format("https://%s:%s/.default", redisHost, redisPort);
 
-        TokenRequestContext tokenRequestContext = new TokenRequestContext()
-                .addScopes(scope);
+        TokenRequestContext request = new TokenRequestContext().addScopes(scope);
 
-        AccessToken token = credential.getToken(tokenRequestContext).toFuture().get();
+        AccessToken token = credential.getToken(request).toFuture().get();
         return token.getToken();
     }
 
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() throws ExecutionException, InterruptedException {
-        // Redis 主机配置
-        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
-        redisConfig.setHostName(redisHost);
-        redisConfig.setPort(redisPort);
-        redisConfig.setUsername("default");                 // Azure Redis 默认 OAuth 用户
-        redisConfig.setPassword(getRedisAccessToken());     // Token 作为密码
+        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration(redisHost, redisPort);
+        redisConfig.setUsername("default");               // OAuth 用户固定为 default
+        redisConfig.setPassword(getRedisAccessToken());
 
-        // Lettuce 客户端配置：启用 TLS
-        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .useSsl() // TLS
-                .build();
-
-        return new LettuceConnectionFactory(redisConfig, clientConfig);
+        // 这里直接给 LettuceConnectionFactory 传超时
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig);
+        factory.setTimeout(5000); // 毫秒
+        factory.afterPropertiesSet();
+        return factory;
     }
 
     @Bean
