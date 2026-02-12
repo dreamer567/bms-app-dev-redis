@@ -41,6 +41,7 @@ spring:
     redis:
       host: bms-dev-cache-002.japanwest.redis.azure.net
       port: 10000
+      password: OjPDBEdoAVvZULHdIJs9q7Y7AYDpdqPd8AzCaMjDQFE=
       ssl: true
       # 超时配置（统一连接/命令超时）
       timeout: 30000ms
