@@ -30,7 +30,7 @@ public class RedisAccessKeyTestController {
     @Value("${spring.data.redis.host}")
     private String redisHost;
 
-    @Value("${spring.data.redis.port:6380}")
+    @Value("${spring.data.redis.port:10000}")
     private int redisPort;
 
     @Value("${spring.data.redis.password}")
