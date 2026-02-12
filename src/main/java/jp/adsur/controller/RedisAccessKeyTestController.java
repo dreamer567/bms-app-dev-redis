@@ -74,7 +74,7 @@ public class RedisAccessKeyTestController {
                     redisHost,
                     redisPort,
                     REDIS_TIMEOUT, // 优化：使用统一常量，避免硬编码重复
-                    REDIS_DEFAULT_USER, // 替换原null，解决认证失败核心问题
+//                    REDIS_DEFAULT_USER, // 替换原null，解决认证失败核心问题
                     redisPassword,
                     redisSsl
             );
