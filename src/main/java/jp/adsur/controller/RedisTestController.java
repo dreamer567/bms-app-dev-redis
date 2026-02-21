@@ -45,7 +45,7 @@ public class RedisTestController {
             log.info("✅ Azure Managed Identity クレデンシャル初期化成功");
         } catch (Exception e) {
             log.error("❌ Azure Managed Identity クレデンシャル初期化失敗", e);
-            throw new RuntimeException("托管标识凭据初始化失败（azure-identity 1.12.2）", e);
+            throw new RuntimeException("Azure Managed Identity クレデンシャル初期化失敗（azure-identity 1.12.2）", e);
         }
     }
 
@@ -95,6 +95,7 @@ public class RedisTestController {
             // 1. 客户端配置（包含SSL + Token密码 + 超时，核心！）
             JedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
                     .ssl(true) // 强制启用TLS（Azure Redis必须）
+                    .user("4946c2a3-18ec-42ee-aac6-14d4344bfb5e")
                     .password(accessToken.getToken()) // Entra Token作为密码
                     .connectionTimeoutMillis(5000) // 连接超时5秒
                     .socketTimeoutMillis(3000) // 读写超时3秒
