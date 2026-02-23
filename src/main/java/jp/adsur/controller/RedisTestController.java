@@ -87,9 +87,9 @@ public class RedisTestController {
             // 关键修复：构建RedisURI时必须指定用户名（两种方式二选一）
             RedisURI redisURI = RedisURI.builder()
                     .withHost(redisHost)
-                    .withPort(redisPort) // 强制6380（TLS端口）
+                    .withPort(redisPort)
                     .withSsl(true) // Entra ID认证必须启用SSL
-                    .withAuthentication(clientId, accessToken.getToken())
+                    .withAuthentication("$"+redisInstanceName, accessToken.getToken())
 //                    .withUsername(redisInstanceName) // 方式1：用Redis实例名（推荐）
 //                    // .withUsername(clientId) // 方式2：用服务主体Client ID（也可）
 //                    .withPassword(accessToken.getToken()) // 令牌作为密码
@@ -129,7 +129,7 @@ public class RedisTestController {
         } catch (Exception e) {
             log.error("\n❌ Redis接続テスト失敗 =====", e);
             response.put("status", "エラー");
-            response.put("message", String.format("Redis接続テストに失敗しました：%s", e.getMessage()));
+            response.put("message",e.getMessage());
             response.put("errorDetail", Map.of(
                     "errorType", e.getClass().getName(),
                     "redisHost", redisHost,
