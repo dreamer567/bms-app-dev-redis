@@ -3,8 +3,6 @@ package jp.adsur.controller;
 import com.azure.core.credential.AccessToken;
 import com.azure.identity.ClientSecretCredential;
 import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.identity.DefaultAzureCredential;
-import com.azure.identity.DefaultAzureCredentialBuilder;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -39,21 +37,24 @@ public class RedisTestController {
     @Value("${spring.data.redis.port:6380}") // Azure Redis TLS默认端口6380
     private int redisPort;
 
-    // Azure托管标识凭据（全局初始化）
-    private final DefaultAzureCredential azureCredential;
+    @Value("${spring.data.redis.password:}") // client_secret
+    private String redisPassword;
+
+//    // Azure托管标识凭据（全局初始化）
+//    private final DefaultAzureCredential azureCredential;
 
     // 构造函数：初始化Azure托管标识凭据
     public RedisTestController() {
-        log.info("===== Azure Managed Identity クレデンシャル初期化開始（azure-identity 1.12.2） =====");
-        try {
-            this.azureCredential = new DefaultAzureCredentialBuilder()
-                    .authorityHost("https://login.microsoftonline.com/")
-                    .build();
-            log.info("✅ Azure Managed Identity クレデンシャル初期化成功");
-        } catch (Exception e) {
-            log.error("❌ Azure Managed Identity クレデンシャル初期化失敗", e);
-            throw new RuntimeException("Azure Managed Identity クレデンシャル初期化失敗（azure-identity 1.12.2）", e);
-        }
+//        log.info("===== Azure Managed Identity クレデンシャル初期化開始（azure-identity 1.12.2） =====");
+//        try {
+//            this.azureCredential = new DefaultAzureCredentialBuilder()
+//                    .authorityHost("https://login.microsoftonline.com/")
+//                    .build();
+//            log.info("✅ Azure Managed Identity クレデンシャル初期化成功");
+//        } catch (Exception e) {
+//            log.error("❌ Azure Managed Identity クレデンシャル初期化失敗", e);
+//            throw new RuntimeException("Azure Managed Identity クレデンシャル初期化失敗（azure-identity 1.12.2）", e);
+//        }
     }
 
     /**
@@ -73,7 +74,7 @@ public class RedisTestController {
         scopes.add("https://redis.azure.com/.default");
 
         TokenAuthConfig authConfig = EntraIDTokenAuthConfigBuilder.builder()
-                .secret("ERP8Q~L8tV5rrQbDTmHFaFqtxuKVRlozf58bibN_")
+                .secret(redisPassword)
                 .authority("https://login.microsoftonline.com/c8047302-6c6e-43d6-97cd-ac845e5082fe/")
                 .scopes(scopes)
                 // Other options...
@@ -81,7 +82,7 @@ public class RedisTestController {
 
         try {
             // 2. 获取 Entra ID 访问令牌
-            String accessToken = getEntraIDToken(authConfig);
+            String accessToken = getEntraIDToken(authConfig, redisPassword);
             log.info("成功获取 Entra ID 令牌: " + accessToken.substring(0, 20) + "...");
 
             // 3. 创建 Redis 连接
@@ -145,12 +146,12 @@ public class RedisTestController {
     /**
      * 基于 TokenAuthConfig 获取 Entra ID 访问令牌
      */
-    private static String getEntraIDToken(TokenAuthConfig authConfig) {
+    private static String getEntraIDToken(TokenAuthConfig authConfig, String clientSecret) {
         // 构建 ClientSecretCredential（服务主体认证）
         ClientSecretCredential credential = new ClientSecretCredentialBuilder()
                 .tenantId("c8047302-6c6e-43d6-97cd-ac845e5082fe") // 租户ID
                 .clientId("04e43e6e-7cf3-41b8-81be-4a1cfb4c57ff") // 服务主体客户端ID（需要你补充）
-                .clientSecret("ERP8Q~L8tV5rrQbDTmHFaFqtxuKVRlozf58bibN_") // 服务主体密钥
+                .clientSecret(clientSecret) // 服务主体密钥
                 .build();
 
         // 获取访问令牌
@@ -187,15 +188,15 @@ public class RedisTestController {
         return redisClient.connect();
     }
 
-    /**
-     * Tokenマスク（安全対策：避免日志泄露敏感信息）
-     */
-    private String maskToken(String token) {
-        if (token == null || token.length() <= 16) {
-            return "******";
-        }
-        return token.substring(0, 8) + "********************" + token.substring(token.length() - 8);
-    }
+//    /**
+//     * Tokenマスク（安全対策：避免日志泄露敏感信息）
+//     */
+//    private String maskToken(String token) {
+//        if (token == null || token.length() <= 16) {
+//            return "******";
+//        }
+//        return token.substring(0, 8) + "********************" + token.substring(token.length() - 8);
+//    }
 
     /**
      * 現在時刻フォーマット（日式格式）
