@@ -11,6 +11,8 @@ azure:
         tenant-id: ${AZURE_TENANT_ID}
         client-id: ${AZURE_CLIENT_ID}
         client-secret: ${AZURE_CLIENT_SECRET}
+    redis:
+        instance-name: bms-dev-cache-002
 
 # Spring 基础配置
 spring:
