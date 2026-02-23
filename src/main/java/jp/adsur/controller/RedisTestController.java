@@ -1,26 +1,33 @@
 package jp.adsur.controller;
 
 import com.azure.core.credential.AccessToken;
-import com.azure.core.credential.TokenRequestContext;
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.resource.ClientResources;
+import io.lettuce.core.resource.DefaultClientResources;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import lombok.extern.slf4j.Slf4j;
-import redis.clients.jedis.HostAndPort;
-import redis.clients.jedis.JedisPooled;
-import redis.clients.jedis.JedisClientConfig;
-import redis.clients.jedis.DefaultJedisClientConfig;
+import redis.clients.authentication.core.TokenAuthConfig;
+import redis.clients.authentication.entraid.EntraIDTokenAuthConfigBuilder;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @Slf4j
@@ -55,94 +62,60 @@ public class RedisTestController {
     @GetMapping("/test-redis")
     public ResponseEntity<Map<String, Object>> testRedis() {
         Map<String, Object> response = new HashMap<>();
-        AccessToken accessToken = null;
-        JedisPooled redisClient = null;
 
         // ステップ1：基本情報ログ出力
-        log.info("\n===== Redis接続テスト開始（jedis 5.1.2 / Java 17） =====");
+        log.info("\n===== Redis接続テスト開始（jedis 7.2.0 / Java 17） =====");
         log.info("📌 Redis接続基本情報：host={}, port={}, Javaバージョン={}",
                 redisHost, redisPort, System.getProperty("java.version"));
 
+
+        Set<String> scopes = new HashSet<>();
+        scopes.add("https://redis.azure.com/.default");
+
+        TokenAuthConfig authConfig = EntraIDTokenAuthConfigBuilder.builder()
+                .secret("ERP8Q~L8tV5rrQbDTmHFaFqtxuKVRlozf58bibN_")
+                .authority("https://login.microsoftonline.com/c8047302-6c6e-43d6-97cd-ac845e5082fe/")
+                .scopes(scopes)
+                // Other options...
+                .build();
+
         try {
-            // ステップ2：Entra Token取得（修复block方法）
-            log.info("\n===== Entra Token取得開始 =====");
-            String redisTokenScope = "https://redis.azure.com/.default";
-            log.info("🔍 Token取得リクエスト：scope={}, タイムスタンプ={}",
-                    redisTokenScope, getFormattedCurrentTime());
+            // 2. 获取 Entra ID 访问令牌
+            String accessToken = getEntraIDToken(authConfig);
+            log.info("成功获取 Entra ID 令牌: " + accessToken.substring(0, 20) + "...");
 
-            TokenRequestContext tokenRequest = new TokenRequestContext();
-            tokenRequest.addScopes(redisTokenScope);
+            // 3. 创建 Redis 连接
+            try (StatefulRedisConnection<String, String> connection = createRedisConnection(redisHost, redisPort, accessToken)) {
+                // 4. 验证连接（执行简单命令）
+                RedisCommands<String, String> syncCommands = connection.sync();
+                String pingResponse = syncCommands.ping();
+                log.info("Redis 连接验证成功，PING 响应: ", pingResponse);
 
-            // 正确的block方法：Duration参数（适配azure-identity 1.12.2）
-            accessToken = azureCredential.getToken(tokenRequest)
-                    .block(Duration.ofSeconds(30));
+                // 测试读写操作
+                String key = "test-key";
+                String value = "azure-redis-entra-auth-test";
+                syncCommands.set(key, value);
+                String valueGot = syncCommands.get(key);
+                log.info("从 Redis 获取值: ", valueGot);
 
-            // Token検証
-            if (accessToken == null || accessToken.getToken() == null || accessToken.getToken().isEmpty()) {
-                log.error("❌ Entra Token取得失敗：Tokenがnullまたは空です");
-                throw new RuntimeException("Entra Token取得に失敗しました：Tokenが空です");
+                // ステップ5：正常レスポンス
+                log.info("\n===== Redis接続テスト全流程成功 =====");
+                response.put("status", "成功");
+                response.put("message", "Redis接続テストに成功しました（Azure Managed Identity + TLS / jedis 5.1.2）");
+                response.put("data", Map.of(
+                        "redisHost", redisHost,
+                        "redisPort", redisPort,
+                        "javaVersion", System.getProperty("java.version"),
+                        "jedisVersion", "5.1.2",
+                        "azureIdentityVersion", "1.12.2",
+                        "key", key,
+                        "value", valueGot
+                ));
+                return ResponseEntity.ok(response);
+            } catch (Exception e) {
+                log.error("Redis 连接或操作失败: ", e);
+                throw new RuntimeException("Redis 连接或操作失败", e);
             }
-
-            // Token情報ログ（マスク）
-            String maskedToken = maskToken(accessToken.getToken());
-            log.info("✅ Entra Token取得成功！");
-            log.info("   - マスク後Token：{}", maskedToken);
-            log.info("   - Token有効期限：{}", accessToken.getExpiresAt());
-            log.info("   - Token取得時間：{}", getFormattedCurrentTime());
-
-            // ステップ3：Redisクライアント初期化（终极修复：使用Jedis 5.1.2官方构造器）
-            log.info("\n===== Redisクライアント初期化開始（jedis 5.1.2） =====");
-            // 1. 客户端配置（包含SSL + Token密码 + 超时，核心！）
-            JedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
-                    .ssl(true) // 强制启用TLS（Azure Redis必须）
-                    .user("8afbbecf-15f5-4f67-8480-0c2ee65beec5")
-                    .password(accessToken.getToken()) // Entra Token作为密码
-                    .connectionTimeoutMillis(5000) // 连接超时5秒
-                    .socketTimeoutMillis(3000) // 读写超时3秒
-                    .build();
-
-            // 2. Jedis 5.1.2 官方支持的构造器（host + port + clientConfig）
-            // 这是唯一100%匹配的重载，无任何多余参数
-            redisClient = new JedisPooled(
-                    new HostAndPort(redisHost,redisPort),
-//                    redisHost,    // Redis主机
-//                    redisPort,    // Redis端口
-                    clientConfig  // 客户端配置（含SSL/Token/超时）
-            );
-            log.info("✅ Redisクライアント初期化成功：host={}, port={}, SSL={}",
-                    redisHost, redisPort, clientConfig.isSsl());
-
-            // ステップ4：Redis操作（SET/GET）
-            log.info("\n===== Redis操作開始（SET/GET） =====");
-            String timeStr = getFormattedCurrentTime();
-            String key = "テストキー-" + timeStr;
-            String value = "テスト値-" + timeStr;
-            log.info("🔧 Redis SET操作：key={}, value={}", key, value);
-
-            // Redis SET実行（Jedis 5.1.2兼容）
-            String setResult = redisClient.set(key, value);
-            log.info("✅ Redis SET操作成功：結果={}", setResult);
-
-            // Redis GET実行
-            log.info("🔧 Redis GET操作：key={}", key);
-            String getResult = redisClient.get(key);
-            log.info("✅ Redis GET操作成功：取得値={}", getResult);
-
-            // ステップ5：正常レスポンス
-            log.info("\n===== Redis接続テスト全流程成功 =====");
-            response.put("status", "成功");
-            response.put("message", "Redis接続テストに成功しました（Azure Managed Identity + TLS / jedis 5.1.2）");
-            response.put("data", Map.of(
-                    "redisHost", redisHost,
-                    "redisPort", redisPort,
-                    "javaVersion", System.getProperty("java.version"),
-                    "jedisVersion", "5.1.2",
-                    "azureIdentityVersion", "1.12.2",
-                    "tokenExpiresAt", accessToken.getExpiresAt().toString(),
-                    "key", key,
-                    "value", getResult
-            ));
-            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             // 異常処理：詳細ログ（包含所有排查信息）
@@ -165,19 +138,53 @@ public class RedisTestController {
                     "timestamp", getFormattedCurrentTime()
             ));
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-
         } finally {
-            // リソース解放
-            if (redisClient != null) {
-                try {
-                    redisClient.close();
-                    log.info("✅ Redisクライアントを正常にクローズしました");
-                } catch (Exception e) {
-                    log.error("❌ Redisクライアントクローズ失敗", e);
-                }
-            }
             log.info("\n===== Redis接続テスト終了 =====\n");
         }
+    }
+    /**
+     * 基于 TokenAuthConfig 获取 Entra ID 访问令牌
+     */
+    private static String getEntraIDToken(TokenAuthConfig authConfig) {
+        // 构建 ClientSecretCredential（服务主体认证）
+        ClientSecretCredential credential = new ClientSecretCredentialBuilder()
+                .tenantId("c8047302-6c6e-43d6-97cd-ac845e5082fe") // 租户ID
+                .clientId("04e43e6e-7cf3-41b8-81be-4a1cfb4c57ff") // 服务主体客户端ID（需要你补充）
+                .clientSecret("ERP8Q~L8tV5rrQbDTmHFaFqtxuKVRlozf58bibN_") // 服务主体密钥
+                .build();
+
+        // 获取访问令牌
+        AccessToken accessToken = credential.getToken(
+                new com.azure.core.credential.TokenRequestContext()
+                        .addScopes("https://redis.azure.com/.default")
+        ).block();
+
+        if (accessToken == null || accessToken.getToken() == null) {
+            throw new RuntimeException("获取 Entra ID 令牌失败，令牌为空");
+        }
+
+        return accessToken.getToken();
+    }
+
+    /**
+     * 创建带 Entra ID 认证的 Redis 连接
+     */
+    private static StatefulRedisConnection<String, String> createRedisConnection(String host, int port, String accessToken) {
+        // 配置 ClientResources（资源复用）
+        ClientResources clientResources = DefaultClientResources.create();
+
+        // 构建 RedisURI（启用 SSL，使用令牌作为密码）
+        RedisURI redisURI = RedisURI.builder()
+                .withHost(host)
+                .withPort(port)
+                .withSsl(true) // Azure Redis 必须启用 SSL
+                .withPassword(accessToken) // 核心：将 Entra ID 令牌作为密码
+                .withTimeout(Duration.ofSeconds(30))
+                .build();
+
+        // 创建 RedisClient 并建立连接
+        RedisClient redisClient = RedisClient.create(clientResources, redisURI);
+        return redisClient.connect();
     }
 
     /**
